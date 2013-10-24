@@ -38,6 +38,9 @@ class PullRequest(db.Model):
     number = db.Column(db.Integer)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
     head_commit = db.Column(db.String(40), db.ForeignKey('commit.sha'))
+    ahead_of_master = db.Column(db.Integer, nullable=True)
+    behind_master = db.Column(db.Integer, nullable=True)
+    is_mergable = db.Column(db.Boolean, nullable=True)
 
 
 class Commit(db.Model):

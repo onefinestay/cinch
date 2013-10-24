@@ -96,7 +96,7 @@ class GithubUpdateHandler(object):
             # It's still active
             pass
 
-github_update_handler = GithubUpdateHandler()
+handle_github_update = GithubUpdateHandler()
 
 
 @app.route('/api/github/pull', methods=['POST'])
@@ -109,6 +109,6 @@ def accept_github_update():
     gh = Github(token)
     data = request.form['payload']
 
-    github_update_handler(gh, data)
+    handle_github_update(gh, data)
 
     return 'OK'

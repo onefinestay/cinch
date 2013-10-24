@@ -51,7 +51,7 @@ def user():
 	return 'you are nothing!'
 
 
-@app.route('/github-callback/')
+@app.route('/callback/')
 @github.authorized_handler
 def authorized(access_token):
     if access_token is None:

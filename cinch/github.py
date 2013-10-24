@@ -7,6 +7,8 @@ from cinch.check import check, get_checks
 
 logger = logging.getLogger(__name__)
 
+MASTER_REF = 'refs/heads/master'
+
 GITHUB_TOKEN = "***REMOVED***"
 
 PROJECT_ORGANIZATION = '***REMOVED***'  # needs to be project configuration
@@ -56,9 +58,14 @@ class GithubAdapter(object):
             logger.warning(
                 'received webhook for unconfigured project:\n'
                 '{}'.format(data))
+            return
 
         # TODO: determine whether this update was triggered by a pull
         #       request or master (aka. if we're interested)
+        pull_request_data = data.get('pull_request')
+        if pull_request_data is None and data['ref'] != MASTER_REF:
+            # we don't care about this update
+            return
 
         # Perform checks
         for check_method in get_checks(self):

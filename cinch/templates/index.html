@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>cinch dashboard</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <style>
+            .container {
+                margin: 10px auto;
+            }
+            
+            #ready_pulls {
+                width: 100%;
+            }
+            
+            #ready_pulls tr.ready_pull {
+                border-top: 1px solid #ccc;
+                margin: 2px 0;
+            }
+            
+            #ready_pulls tr.ready_pull td {
+                padding: 7px 0;
+            }
+            
+            .check_statuses {
+                margin: 10px 0;
+            }
+            
+            .panel-heading {
+                font-weight: 800;
+                font-size: 1.2em;
+            }
+            
+            /* bootstrap overrides */
+            
+            .badge-success {
+                background-color: #5CB85C;
+            }
+            
+            .badge-warning {
+                background-color: #D9534F;
+            }
+            
+            .panel-headed {
+                padding-left: 0px;
+                padding-right: 0px;
+            }
+            
+            .col-md-3 {
+                width: 23%;
+                margin: 1%;
+            }
+            
+        </style>
+    </head>
+    <body>
+    <div class="container">
+              
+        <!-- PRs which are ready to ship are in here -->
+        <div class="panel panel-success">
+            <div class="panel-heading">
+                <h3 class="panel-title">Ready to ship</h3>
+            </div>
+            <div class="panel-body">
+                <table id="ready_pulls">
+                    <tr>
+                        <th>Project</th>
+                        <th>Pull ID</th>
+                        <th>SHA</th>
+                        <th>Check Statuses</th>
+                    </tr>
+                    <tr class="ready_pull">
+                        <td>Platform</td>
+                        <td>1023</a>
+                        </td>
+                        <td>
+                            <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                                71168654c9
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge badge-success">+ 0</span>
+                            <span class="badge badge-success">- 0</span>
+                            <span class="label label-success">Passed check</span>
+                            <span class="label label-success">Passed check</span>
+                            <span class="label label-success">Passed check</span>
+                            <span class="label label-success">Passed check</span>
+                            <span class="label label-success">Passed check</span>
+                            <span class="label label-success">Passed check</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <!-- filter -->
+        <div class="panel">
+            <div class="panel-heading">Filter by:</div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-default">show all</button>
+                <button type="button" class="btn btn-default">my pull requests</button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                        by project
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#">Project 1</a></li>
+                        <li><a href="#">Project 2</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pull request detail  -->
+        <div data-gh-user="alushtom" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 2" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="alushtom" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 2" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 2" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="alushtom" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 2" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="timbo" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="alushtom" data-project="Project 2" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="alushtom" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+        <div data-gh-user="alushtom" data-project="Project 1" class="col-md-3 panel panel-default panel-headed">
+            <div class="panel-heading">
+                project_name/123
+                <span  class="pull-right">
+                    <span class="badge badge-success">+ 0</span>
+                    <span class="badge badge-warning">- 20</span>
+                </span>
+            </div>
+            <div class="panel-body">
+                <a href="https://github.com/***REMOVED***/glueify/commit/71168654c9b0f0ad053da47e9de06687f1b278b9">
+                    SHA: 71168654c9
+                </a>
+                <div class="check_statuses">
+                    <span class="label label-success">IT</span>
+                    <span class="label label-info">UT</span>
+                    <span class="label label-warning">CR</span>
+                    <span class="label label-default">XX</span>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+        <script src="../static/js/jquery.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+    </body>
+</html>

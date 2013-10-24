@@ -51,6 +51,8 @@ class GithubAdapter(object):
 
 @app.route('/api/github/pull', methods=['POST'])
 def accept_github_update():
+    """ View for github web hooks to handle updates
+    """
     # TODO: if user is logged in, use their token instead of the default one
     token = GITHUB_TOKEN
 

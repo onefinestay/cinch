@@ -2,7 +2,7 @@ import logging
 from flask import request
 from github import Github, UnknownObjectException
 
-from cinch import app
+from cinch import app, db
 from cinch.check import check, get_checks
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,21 @@ class GithubUpdateHandler(object):
         pull_request_data = data.get('pull_request')
         if pull_request_data is not None:
             # handle update to pull request... perform checks
-            self.pull = None  # something that is not None...
+
+            pr_number = pull_request_data['number']
+            # need to get project_id
+            project_id = None
+            pull = db.PullRequest.query.get(pr_number, project_id)
+
+            if pull is None:
+                # we need to initialise the pull request as it's the
+                # first time we've heard of it
+                pull = db.PullRequest(
+                    number=pr_number,
+                    project_id=project_id,
+                    head_commit=pull_request_data['head']['sha'],
+                )
+                db.session.add(pull)
 
             for check_method in get_checks(self):
                 check_method()

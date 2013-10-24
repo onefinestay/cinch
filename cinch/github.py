@@ -35,16 +35,17 @@ class GithubUpdateHandler(object):
                 '{}'.format(data))
             return
 
-        # TODO: determine whether this update was triggered by a pull
-        #       request or master (aka. if we're interested)
         pull_request_data = data.get('pull_request')
-        if pull_request_data is None and data['ref'] != MASTER_REF:
-            # we don't care about this update
-            return
+        if pull_request_data is not None:
+            # handle update to pull request... perform checks
+            self.pull = None  # something that is not None...
 
-        # Perform checks
-        for check_method in get_checks(self):
-            check_method()
+            for check_method in get_checks(self):
+                check_method()
+
+        if data['ref'] == MASTER_REF:
+            # handle update to master... invalidate other checks and the like
+            pass
 
     _repo = None
 
@@ -85,16 +86,16 @@ class GithubUpdateHandler(object):
                 '{}, {}'.format(master_sha, head_sha))
             return
 
-        if status.behind_by > 0:
-            # set flag to false
-            pass
-        elif status.ahead_by <= 0:
-            # pull request has been merged
-            pass
-        else:
-            # Pull Request is ahead of master and up to date.
-            # It's still active
-            pass
+        if self.pull:
+            self.pull.behind_master = status.behind_by
+            self.pull.ahead_of_master = status.ahead_by
+
+    @check
+    def is_mergable(self):
+        """ TODO!
+        """
+        # pretty sure data['mergable'] is null at the point of the
+        # hook being sent
 
 handle_github_update = GithubUpdateHandler()
 

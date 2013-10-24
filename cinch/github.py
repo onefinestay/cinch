@@ -20,6 +20,7 @@ PROJECT_CONFIG = {  # the fully qualified repo name `organization/repo`
 
 class GithubAdapter(object):
     """ Constructed with an authenticated :mod:`github.Github` instance.
+
     """
 
     def __init__(self, gh):

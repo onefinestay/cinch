@@ -11,12 +11,9 @@ MASTER_REF = 'refs/heads/master'
 
 GITHUB_TOKEN = "***REMOVED***"
 
-PROJECT_ORGANIZATION = '***REMOVED***'  # needs to be project configuration
-
-PROJECT_CONFIG = {  # the fully qualified repo name `organization/repo`
-    '***REMOVED***': '***REMOVED***/***REMOVED***',
-    '***REMOVED***': '***REMOVED***/***REMOVED***',
-    '***REMOVED***': '***REMOVED***/***REMOVED***-admin-screens',
+REPO_TO_PROJECT_MAP = {
+    '***REMOVED***': '***REMOVED***',
+    '***REMOVED***-admin-screens': '***REMOVED***',
 }
 
 
@@ -25,11 +22,42 @@ class GithubUpdateHandler(object):
         `data` dictionary describing the update.
     """
 
+    def _handle_pull_request(self, pull_request_data):
+        """ handle update to pull request... perform checks
+        """
+
+        pr_number = pull_request_data['number']
+        # need to get project_id
+        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
+        project = db.Project.filter.filter_by(name=project_name).one()
+        pull = db.PullRequest.query.get(pr_number, project.id)
+
+        if pull is None:
+            # we need to initialise the pull request as it's the
+            # first time we've heard of it
+            pull = db.PullRequest(
+                number=pr_number,
+                project_id=project.id,
+            )
+            db.session.add(pull)
+
+        pull.head_commit = pull_request_data['head']['sha']
+
+        for check_method in get_checks(self):
+            check_method()
+
+    def _handle_master_update(self):
+        # handle update to master... invalidate other checks and the like
+        pass
+
     def __call__(self, gh, data):
         self.gh = gh
         self.data = data
 
-        if self.repo is None:
+        if (
+            self.repo is None or
+            self.repo.name not in REPO_TO_PROJECT_MAP.keys()
+        ):
             logger.warning(
                 'received webhook for unconfigured project:\n'
                 '{}'.format(data))
@@ -37,29 +65,12 @@ class GithubUpdateHandler(object):
 
         pull_request_data = data.get('pull_request')
         if pull_request_data is not None:
-            # handle update to pull request... perform checks
-
-            pr_number = pull_request_data['number']
-            # need to get project_id
-            project_id = None
-            pull = db.PullRequest.query.get(pr_number, project_id)
-
-            if pull is None:
-                # we need to initialise the pull request as it's the
-                # first time we've heard of it
-                pull = db.PullRequest(
-                    number=pr_number,
-                    project_id=project_id,
-                    head_commit=pull_request_data['head']['sha'],
-                )
-                db.session.add(pull)
-
-            for check_method in get_checks(self):
-                check_method()
+            self._handle_pull_request(pull_request_data)
 
         if data['ref'] == MASTER_REF:
-            # handle update to master... invalidate other checks and the like
-            pass
+            self._handle_master_update()
+
+        db.session.commit()
 
     _repo = None
 

@@ -6,7 +6,7 @@ from cinch.auth.views import login
 
 
 def is_authenticated():
-	return session.get('access_token')
+    return session.get('access_token')
 
 
 def requires_auth(f):

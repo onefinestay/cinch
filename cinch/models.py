@@ -1,49 +1,62 @@
-from flask.ext.sqlalchemy import SQLAlchemy
-
-from cinch import app
+from cinch import db
 
 
 STRING_LENGTH = 200
 
 
-db = SQLAlchemy(app)
-
-
-project_jobs = db.Table('project_jobs',
-    db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
-    db.Column('job_id', db.Integer, db.ForeignKey('job.id'))
+job_projects = db.Table('job_projects',
+    db.Column('job_id', db.Integer, db.ForeignKey('jobs.id'),
+              primary_key=True),
+    db.Column('project_id', db.Integer, db.ForeignKey('projects.id'),
+              primary_key=True),
 )
 
 
 class Project(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(STRING_LENGTH))
+    __tablename__ = "projects"
 
-    jobs = db.relationship('Job', secondary=project_jobs)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
+
+    jobs = db.relationship('Job', secondary=job_projects)
 
 
 class JobType(db.Model):
-    type = db.Column(db.String(STRING_LENGTH))
+    __tablename__ = "job_types"
+
+    name = db.Column(db.String(STRING_LENGTH), primary_key=True)
 
 
 class Job(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    jenkins_name = db.Column(db.String(STRING_LENGTH), unique=True)
-    type_id = db.Column(db.String(STRING_LENGTH))
+    __tablename__ = "jobs"
 
-    projects = db.relationship('Project', secondary=project_jobs)
+    id = db.Column(db.Integer, primary_key=True)
+    jenkins_name = db.Column(db.String(STRING_LENGTH), unique=True,
+                             nullable=False)
+    type_id = db.Column(db.String(STRING_LENGTH),
+                        db.ForeignKey('job_types.name'), nullable=False)
+
+    projects = db.relationship('Project', secondary=job_projects)
 
 
 class PullRequest(db.Model):
-    number = db.Column(db.Integer)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
-    head_commit = db.Column(db.String(40), db.ForeignKey('commit.sha'))
+    __tablename__ = "pull_requests"
+
+    number = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
+                           primary_key=True)
+    head_commit = db.Column(db.String(40), db.ForeignKey('commits.sha'),
+                            nullable=False)
 
 
 class Commit(db.Model):
-    sha = db.Column(db.String(40), primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
+    __tablename__ = "commits"
 
+    sha = db.Column(db.String(40), primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
+                           nullable=False)
+
+    project = db.relationship('Project')
 
 """
 class CodeReview():
@@ -53,17 +66,22 @@ class CodeReview():
 """
 
 build_commits = db.Table('build_commits',
-    db.Column('build_id', db.Integer, db.ForeignKey('build.id')),
-    db.Column('commit_sha', db.Integer, db.ForeignKey('commit.sha'))
+    db.Column('build_id', db.Integer, db.ForeignKey('builds.id'),
+              primary_key=True),
+    db.Column('commit_sha', db.String(40), db.ForeignKey('commits.sha'),
+              primary_key=True),
 )
 
 
 class Build(db.Model):
+    __tablename__ = "builds"
+
     id = db.Column(db.Integer, primary_key=True)
     jenkins_build_id = db.Column(db.Integer)
-    job_id = db.Column(db.Integer, db.ForeignKey('job.id'))
-    result = db.Column(db.Boolean(nullable=True))
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'))
+    result = db.Column(db.Boolean, nullable=True)
 
+    job = db.relationship('Job')
     commits = db.relationship('Commit', secondary=build_commits)
 
 

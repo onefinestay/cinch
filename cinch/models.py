@@ -31,8 +31,7 @@ class Job(db.Model):
     __tablename__ = "jobs"
 
     id = db.Column(db.Integer, primary_key=True)
-    jenkins_name = db.Column(db.String(STRING_LENGTH), unique=True,
-                             nullable=False)
+    name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
     type_id = db.Column(db.String(STRING_LENGTH),
                         db.ForeignKey('job_types.name'), nullable=False)
 
@@ -77,7 +76,7 @@ class Build(db.Model):
     __tablename__ = "builds"
 
     id = db.Column(db.Integer, primary_key=True)
-    jenkins_build_id = db.Column(db.Integer)
+    build_number = db.Column(db.Integer)
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'))
     result = db.Column(db.Boolean, nullable=True)
 

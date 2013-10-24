@@ -7,7 +7,7 @@ from cinch.auth import requires_auth
 from cinch.models import db, Job, Project, Commit, Build
 
 
-def record_job_result(jenkins_name, jenkins_build_id, shas, result):
+def record_job_result(job_name, build_number, shas, result):
     """
     e.g.
         shas = {
@@ -16,12 +16,12 @@ def record_job_result(jenkins_name, jenkins_build_id, shas, result):
         }
     """
 
-    job = db.session.query(Job).filter(Job.jenkins_name == jenkins_name).one()
+    job = db.session.query(Job).filter(Job.job_name == job_name).one()
 
     # sanity check
     assert set([p.name for p in job.projects]) == set(shas.keys())
 
-    build = Build(jenkins_build_id=jenkins_build_id, job=job, result=result)
+    build = Build(build_number=build_number, job=job, result=result)
 
     for project_name, sha in shas.items():
         project = db.session.query(Project).filter_by(name=project_name).one()

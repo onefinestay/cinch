@@ -46,9 +46,9 @@ def logout():
 
 @app.route('/user')
 def user():
-	if g.access_token:
-		return 'hello %s' % g.access_token
-	return 'you are nothing!'
+    if g.access_token:
+        return 'hello %s' % g.access_token
+    return 'you are nothing!'
 
 
 @app.route('/callback/')

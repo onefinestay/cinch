@@ -20,14 +20,31 @@ PROJECT_CONFIG = {  # the fully qualified repo name `organization/repo`
 }
 
 
-class GithubAdapter(object):
-    """ Constructed with an authenticated :mod:`github.Github` instance.
-
+class GithubUpdateHandler(object):
+    """ Constructed with an authenticated :mod:`github.Github` instance and a
+        `data` dictionary describing the update.
     """
 
-    def __init__(self, gh):
+    def __call__(self, gh, data):
         self.gh = gh
-        self.data = {}
+        self.data = data
+
+        if self.repo is None:
+            logger.warning(
+                'received webhook for unconfigured project:\n'
+                '{}'.format(data))
+            return
+
+        # TODO: determine whether this update was triggered by a pull
+        #       request or master (aka. if we're interested)
+        pull_request_data = data.get('pull_request')
+        if pull_request_data is None and data['ref'] != MASTER_REF:
+            # we don't care about this update
+            return
+
+        # Perform checks
+        for check_method in get_checks(self):
+            check_method()
 
     _repo = None
 
@@ -51,26 +68,6 @@ class GithubAdapter(object):
                 self._repo = None
 
         return self._repo
-
-    def handle_update(self, data):
-        self.data = data
-
-        if self.repo is None:
-            logger.warning(
-                'received webhook for unconfigured project:\n'
-                '{}'.format(data))
-            return
-
-        # TODO: determine whether this update was triggered by a pull
-        #       request or master (aka. if we're interested)
-        pull_request_data = data.get('pull_request')
-        if pull_request_data is None and data['ref'] != MASTER_REF:
-            # we don't care about this update
-            return
-
-        # Perform checks
-        for check_method in get_checks(self):
-            check_method()
 
     @check
     def up_to_date(self):
@@ -99,6 +96,8 @@ class GithubAdapter(object):
             # It's still active
             pass
 
+github_update_handler = GithubUpdateHandler()
+
 
 @app.route('/api/github/pull', methods=['POST'])
 def accept_github_update():
@@ -108,10 +107,8 @@ def accept_github_update():
     token = GITHUB_TOKEN
 
     gh = Github(token)
-    adapter = GithubAdapter(gh)
-
     data = request.form['payload']
 
-    adapter.handle_update(data)
+    github_update_handler(gh, data)
 
     return 'OK'

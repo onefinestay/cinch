@@ -27,6 +27,7 @@ class GithubAdapter(object):
 
     def __init__(self, gh):
         self.gh = gh
+        self.data = {}
 
     _repo = None
 

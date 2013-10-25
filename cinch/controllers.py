@@ -1,7 +1,7 @@
 from cinch.models import db, Job, Project, Commit, Build
 
 
-def record_job_result(job_name, build_number, shas, result):
+def record_job_result(job_name, build_number, shas, success, status):
     """
     e.g.
         shas = {
@@ -10,12 +10,12 @@ def record_job_result(job_name, build_number, shas, result):
         }
     """
 
-    job = db.session.query(Job).filter(Job.job_name == job_name).one()
+    job = db.session.query(Job).filter(Job.name == job_name).one()
 
     # sanity check
     assert set([p.name for p in job.projects]) == set(shas.keys())
 
-    build = Build(build_number=build_number, job=job, result=result)
+    build = Build(build_number=build_number, job=job, success=success, status=status)
 
     for project_name, sha in shas.items():
         project = db.session.query(Project).filter_by(name=project_name).one()
@@ -68,3 +68,4 @@ def get_successful_builds(project_name, job_type, branch_shas):
                 break
 
     return jobs_with_successful_builds
+

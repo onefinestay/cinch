@@ -2,7 +2,7 @@ from flask import g, request, render_template
 import logging
 
 from cinch import app
-from cinch.auth import requires_auth
+from cinch.auth.decorators import requires_auth
 from cinch.jenkins import handle_data
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,12 @@ def accept_jenksins_update():
     """ View for jenkins web hooks to handle updates
     """
     logger.debug('receiving jenkins notification')
+
     data = request.get_data()
-    handle_data(data)
+    try:
+        handle_data(data)
+    except Exception, e:
+        logger.error(str(e), exc_info=True)
+        raise
 
     return 'OK', 200

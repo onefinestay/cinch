@@ -1,7 +1,5 @@
-
+from flask import g, request, render_template
 import logging
-
-from flask import g, request
 
 from cinch import app
 from cinch.auth.decorators import requires_auth
@@ -11,16 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 @app.route('/')
+@requires_auth
 def index():
-    message = """
-        <p>Hello World!<br>CI is a cinch!<br>
-             <a href="/login/">login</a></br>
-             <a href="/logout/">logout</a></br>
-             <a href="/user">you</a></br>
-             <a href="/secret/">secret</a>
-        </p>"""
-
-    return message
+    return render_template('index.html')
 
 
 # test route

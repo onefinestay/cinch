@@ -1,165 +1,101 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>cinch dashboard</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="../static/css/bootstrap.min.css" rel="stylesheet" media="all">
-        <link href="../static/css/cinch.css" rel="stylesheet" media="all">
-    </head>
-    <body>
-    <div class="container">
-              
-        <!-- PRs which are ready to ship are in here -->
-        <div class="panel panel-success">
-            <div class="panel-heading">
-                <h3 class="panel-title">Ready to ship</h3>
-            </div>
-            <div class="panel-body">
-                <table id="ready_pulls">
-                    <tr>
-                        <th>Project</th>
-                        <th>Pull ID</th>
-                        <th>SHA</th>
-                        <th>Check Statuses</th>
-                    </tr>
-                    <tr class="ready_pull">
-                        <td>project-name</td>
-                        <td>
-                            <a href="https://github.com/organization/project/pull/00">
-                                1023
-                            </a>
-                        </td>
-                        <td>
-                            <a href="https://github.com/organization/project/commit/sha_hash">
-                                71168654c9
-                            </a>
-                        </td>
-                        <td>
-                            <span class="badge badge-warning">+ 10</span>
-                            <span class="badge badge-success">- 0</span>
-                            <span class="label label-success">Passed check</span>
-                            <span class="label label-success">Passed check</span>
-                            <span class="label label-success">Passed check</span>
-                            <span class="label label-success">Passed check</span>
-                            <span class="label label-success">Passed check</span>
-                            <span class="label label-success">Passed check</span>
-                        </td>
-                    </tr>
-                </table>
+{% extends "layout.html" %}
+{% block body %}
+<!-- PRs which are ready to ship are in here -->
+<div class="panel panel-success">
+    <div class="panel-heading">
+        <h3 class="panel-title">Ready to ship</h3>
+    </div>
+    <div class="panel-body">
+        <table id="ready_pulls">
+            <tr>
+                <th>Project</th>
+                <th>Pull ID</th>
+                <th>SHA</th>
+                <th>Check Statuses</th>
+            </tr>
+            <tr class="ready_pull">
+                <td>project-name</td>
+                <td>
+                    <a href="https://github.com/organization/project/pull/00">
+                        1023
+                    </a>
+                </td>
+                <td>
+                    <a href="https://github.com/organization/project/commit/sha_hash">
+                        71168654c9
+                    </a>
+                </td>
+                <td>
+                    <span class="badge badge-warning">+ 10</span>
+                    <span class="badge badge-success">- 0</span>
+                    <span class="label label-success">Passed check</span>
+                    <span class="label label-success">Passed check</span>
+                    <span class="label label-success">Passed check</span>
+                    <span class="label label-success">Passed check</span>
+                    <span class="label label-success">Passed check</span>
+                    <span class="label label-success">Passed check</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- filter -->
+<div class="panel">
+    <div class="panel-heading">Filter by:</div>
+    <div class="btn-group">
+        <button id="filter-all" type="button" class="filter-on btn btn-default">show all</button>
+        <button id="filter-username" type="button" class="filter-off btn btn-default">my pull requests</button>
+        <div class="btn-group">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                by project
+                <span class="caret"></span>
+            </button>
+            <ul id="filter-project" class="dropdown-menu">
+                <li id="p1"><a id="ap1" data-projectname="all" href="#" class="filter-project filter-on">
+                    All
+                </a></li>
+                <li id="p1"><a id="ap1" data-projectname="Project-1" href="#" class="filter-project">
+                    Project-1
+                </a></li>
+                <li><a data-projectname="Project-2" href="#" class="filter-project">
+                    Project-2
+                </a></li>
+                <li><a data-projectname="Project-3" href="#" class="filter-project">
+                    Project-3
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Grid of ordered pull requests -->
+<div id="pr-container">
+    {% for pull in pull_requests %}
+    <div data-gh-user="somedude" data-project="Project-1" class="col-md-3 panel panel-default panel-headed pull_request">
+        <div class="panel-heading pr_heading">
+            <a href="https://github.com/organization/project/pull/00">
+                very-long-git-repo-name/1234
+            </a>
+        </div>
+        <div class="panel-body">
+            <p class="pr_description">Fixes all the bugs.</p>
+            <span class="pr_owner">Somedude</span><span class="pr_age"> opened 15 days ago</span><br />
+            <a class="sha_hash" href="https://github.com/organization/project/commit/sha-hash">
+                <label>SHA:</label> 71168654c9
+            </a>
+            <div class="check_statuses">
+                <span title="Integration Test" class="label label-success">IT</span>
+                <span title="Unit Test" class="label label-info">UT</span>
+                <span title="Code Review" class="label label-warning">CR</span>
+                <span title="Some other test type" class="label label-default">XX</span>
+                <span  class="pull-right">
+                    <span class="badge badge-warning">+ 2</span>
+                    <span class="badge badge-error">- 20</span>
+                </span>
             </div>
         </div>
-        
-        <!-- filter -->
-        <div class="panel">
-            <div class="panel-heading">Filter by:</div>
-            <div class="btn-group">
-                <button id="filter-all" type="button" class="filter-on btn btn-default">show all</button>
-                <button id="filter-username" type="button" class="filter-off btn btn-default">my pull requests</button>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-                        by project
-                        <span class="caret"></span>
-                    </button>
-                    <ul id="filter-project" class="dropdown-menu">
-                        <li id="p1"><a id="ap1" data-projectname="all" href="#" class="filter-project filter-on">
-                            All
-                        </a></li>
-                        <li id="p1"><a id="ap1" data-projectname="Project-1" href="#" class="filter-project">
-                            Project-1
-                        </a></li>
-                        <li><a data-projectname="Project-2" href="#" class="filter-project">
-                            Project-2
-                        </a></li>
-                        <li><a data-projectname="Project-3" href="#" class="filter-project">
-                            Project-3
-                        </a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div id="pr-container">
-            <!-- Pull request detail  -->
-            <div data-gh-user="somedude" data-project="Project-1" class="col-md-3 panel panel-default panel-headed pull_request">
-                <div class="panel-heading pr_heading">
-                    <a href="https://github.com/organization/project/pull/00">
-                        very-long-git-repo-name/1234
-                    </a>
-                </div>
-                <div class="panel-body">
-                    <p class="pr_description">Fixes all the bugs.</p>
-                    <span class="pr_owner">Somedude</span><span class="pr_age"> opened 15 days ago</span><br />
-                    <a class="sha_hash" href="https://github.com/organization/project/commit/sha-hash">
-                        <label>SHA:</label> 71168654c9
-                    </a>
-                    <div class="check_statuses">
-                        <span title="Integration Test" class="label label-success">IT</span>
-                        <span title="Unit Test" class="label label-info">UT</span>
-                        <span title="Code Review" class="label label-warning">CR</span>
-                        <span title="Some other test type" class="label label-default">XX</span>
-                        <span  class="pull-right">
-                            <span class="badge badge-warning">+ 2</span>
-                            <span class="badge badge-error">- 20</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        
-            <div data-gh-user="someotherdude" data-project="Project-2" class="col-md-3 panel panel-default panel-headed pull_request">
-                <div class="panel-heading pr_heading">
-                    <a href="https://github.com/organization/project/pull/00">
-                        Project-2/1234
-                    </a>
-                </div>
-                <div class="panel-body">
-                    <p class="pr_description">Fixes all the bugs.</p>
-                    <span class="pr_owner">Somedude</span><span class="pr_age"> opened 15 days ago</span><br />
-                    <a class="sha_hash" href="https://github.com/organization/project/commit/sha-hash">
-                        <label>SHA:</label> 71168654c9
-                    </a>
-                    <div class="check_statuses">
-                        <span title="Integration Test" class="label label-success">IT</span>
-                        <span title="Unit Test" class="label label-info">UT</span>
-                        <span title="Code Review" class="label label-warning">CR</span>
-                        <span title="Some other test type" class="label label-default">XX</span>
-                        <span  class="pull-right">
-                            <span class="badge badge-warning">+ 2</span>
-                            <span class="badge badge-error">- 20</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            <div data-gh-user="somedude" data-project="Project-1" class="col-md-3 panel panel-default panel-headed pull_request">
-                <div class="panel-heading pr_heading">
-                    <a href="https://github.com/organization/project/pull/00">
-                        very-long-git-repo-name/1234
-                    </a>
-                </div>
-                <div class="panel-body">
-                    <p class="pr_description">Fixes all the bugs.</p>
-                    <span class="pr_owner">Someotherdude</span><span class="pr_age"> opened 15 days ago</span><br />
-                    <a class="sha_hash" href="https://github.com/organization/project/commit/sha-hash">
-                        <label>SHA:</label> 71168654c9
-                    </a>
-                    <div class="check_statuses">
-                        <span title="Integration Test" class="label label-success">IT</span>
-                        <span title="Unit Test" class="label label-info">UT</span>
-                        <span title="Code Review" class="label label-warning">CR</span>
-                        <span title="Some other test type" class="label label-default">XX</span>
-                        <span  class="pull-right">
-                            <span class="badge badge-warning">+ 2</span>
-                            <span class="badge badge-error">- 20</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-        </div><!-- close pr-container div -->
-    </div><!-- close container div -->
-        <script src="../static/js/jquery.js"></script>
-        <script src="../static/js/bootstrap.min.js"></script>
-        <script src="../static/js/masonry.js"></script>
-        <script src="../static/js/cinch.js"></script>
-    </body>
-</html>
+    </div>
+    {% endfor %}
+</div><!-- close pr-container div -->
+{% endblock %}

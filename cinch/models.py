@@ -16,6 +16,8 @@ class Project(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
+    master_sha = db.Column(db.String(40), db.ForeignKey('commits.sha'),
+                           nullable=True)
 
     jobs = db.relationship('Job', secondary=job_projects)
 
@@ -88,8 +90,9 @@ class Build(db.Model):
     success = db.Column(db.Boolean, nullable=True)
     status = db.Column(db.Text, nullable=True, default="")
 
-    job = db.relationship('Job')
-    commits = db.relationship('Commit', secondary=build_commits)
+    job = db.relationship('Job', backref='builds')
+    commits = db.relationship(
+        'Commit', secondary=build_commits, backref='builds')
 
 
 

@@ -6,6 +6,7 @@
         <h3 class="panel-title">Ready to ship</h3>
     </div>
     <div class="panel-body">
+        {% if ready_pull_requests %}
         <table id="ready_pulls">
             <tr>
                 <th>Project</th>
@@ -13,30 +14,32 @@
                 <th>SHA</th>
                 <th>Check Statuses</th>
             </tr>
+            {% for pull in ready_pull_requests %}
             <tr class="ready_pull">
-                <td>project-name</td>
+                <td>{{ pull.project.name }}</td>
                 <td>
                     <a href="https://github.com/organization/project/pull/00">
-                        1023
+                        {{ pull.number }}
                     </a>
                 </td>
                 <td>
                     <a href="https://github.com/organization/project/commit/sha_hash">
-                        71168654c9
+                        {{ pull.head_commit }}
                     </a>
                 </td>
                 <td>
-                    <span class="badge badge-warning">+ 10</span>
-                    <span class="badge badge-success">- 0</span>
-                    <span class="label label-success">Passed check</span>
-                    <span class="label label-success">Passed check</span>
-                    <span class="label label-success">Passed check</span>
-                    <span class="label label-success">Passed check</span>
-                    <span class="label label-success">Passed check</span>
-                    <span class="label label-success">Passed check</span>
+                    <span class="badge badge-warning">+ {{ ahead_of_master }}</span>
+                    <span class="badge badge-success">- {{ behind_master }}</span>
+                    {% for check in pull.checks %}
+                    <span class="label label-success">{{ check.name }}</span>
+                    {% endfor %}
                 </td>
             </tr>
+            {% endfor %}
         </table>
+        {% else %}
+                <h5>You gotta check yo'selves - before you wreck yo'selves!</h5>
+        {% endif %}
     </div>
 </div>
 
@@ -55,15 +58,11 @@
                 <li id="p1"><a id="ap1" data-projectname="all" href="#" class="filter-project filter-on">
                     All
                 </a></li>
-                <li id="p1"><a id="ap1" data-projectname="Project-1" href="#" class="filter-project">
-                    Project-1
-                </a></li>
-                <li><a data-projectname="Project-2" href="#" class="filter-project">
-                    Project-2
-                </a></li>
-                <li><a data-projectname="Project-3" href="#" class="filter-project">
-                    Project-3
-                </a></li>
+                {% for project in projects %}
+                    <li><a data-projectname="{{project.name}}" href="#" class="filter-project">
+                        {{ project.name }}
+                    </a></li>
+                {% endfor %}
             </ul>
         </div>
     </div>
@@ -72,26 +71,25 @@
 <!-- Grid of ordered pull requests -->
 <div id="pr-container">
     {% for pull in pull_requests %}
-    <div data-gh-user="somedude" data-project="Project-1" class="col-md-3 panel panel-default panel-headed pull_request">
+    <div data-gh-user="{{ pull.owner }}" data-project="{{ pull.project.name }}" class="col-md-3 panel panel-default panel-headed pull_request">
         <div class="panel-heading pr_heading">
-            <a href="https://github.com/organization/project/pull/00">
-                very-long-git-repo-name/1234
+            <a href="https://github.com/organization/{{ pull.project.name }}/pull/{{ pull.number }}">
+                {{ pull.project.name }}/{{ pull.number }}
             </a>
         </div>
         <div class="panel-body">
             <p class="pr_description">Fixes all the bugs.</p>
-            <span class="pr_owner">Somedude</span><span class="pr_age"> opened 15 days ago</span><br />
-            <a class="sha_hash" href="https://github.com/organization/project/commit/sha-hash">
-                <label>SHA:</label> 71168654c9
+            <span class="pr_owner">{{ pull.owner }}</span><span class="pr_age"> opened 15 days ago</span><br />
+            <a class="sha_hash" href="https://github.com/organization/{{ pull.project.name }}/commit/{{ pull.head_commit }}">
+                <label>SHA:</label> {{ pull.head_commit }}
             </a>
             <div class="check_statuses">
-                <span title="Integration Test" class="label label-success">IT</span>
-                <span title="Unit Test" class="label label-info">UT</span>
-                <span title="Code Review" class="label label-warning">CR</span>
-                <span title="Some other test type" class="label label-default">XX</span>
+                {% for check in pull.checks %}
+                <span title="{{ check.name }}" class="label label-{{ check.status }}">{{ check.short_name }}</span>
+                {% endfor %}
                 <span  class="pull-right">
-                    <span class="badge badge-warning">+ 2</span>
-                    <span class="badge badge-error">- 20</span>
+                    <span class="badge badge-warning">+ {{ pull.ahead_of_master }}</span>
+                    <span class="badge badge-error">- {{ pull.behind_master }}</span>
                 </span>
             </div>
         </div>

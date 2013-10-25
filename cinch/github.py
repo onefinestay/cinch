@@ -131,7 +131,7 @@ class GithubUpdateHandler(object):
 handle_github_update = GithubUpdateHandler()
 
 
-@app.route('/api/github/pull', methods=['POST'])
+@app.route('/api/github/update', methods=['POST'])
 def accept_github_update():
     """ View for github web hooks to handle updates
     """

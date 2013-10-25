@@ -1,10 +1,10 @@
 import pytest
 
-from cinch.models import Project, JobType, Job
-from cinch.controllers import get_jobs
+from cinch.models import Project, JobType, Job, Commit
+from cinch.controllers import get_jobs, record_job_result
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def fixtures(session):
     """
     Dependencies:
@@ -71,10 +71,30 @@ def test_get_jobs(fixtures):
     ]
 
 
+def test_record_job_result(session, fixtures):
 
+    library_master = "lib-master-sha"
 
+    # test small_app@sha1 against master library
+    shas = {
+        'small_app': 'sha1',
+        'library': library_master
+    }
+    record_job_result('small_app_integration', 1, shas, True)
 
+    assert session.query(Commit).count() == 2
+    assert session.query(Commit).get(library_master).project.name == "library"
+    assert session.query(Commit).get("sha1").project.name == "small_app"
 
+    # test large_app@sha2 against master library
+    shas = {
+        'large_app': 'sha2',
+        'library': library_master
+    }
+    record_job_result('large_app_integration', 1, shas, True)
+
+    assert session.query(Commit).count() == 3
+    assert session.query(Commit).get("sha2").project.name == "large_app"
 
 
 

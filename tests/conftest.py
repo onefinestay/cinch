@@ -16,7 +16,7 @@ def clean_db(request):
     drop_and_recreate_db()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def session(request, clean_db):
     from cinch import db
     return db.session

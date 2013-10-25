@@ -21,6 +21,14 @@ REPO_TO_PROJECT_MAP = {
 }
 
 
+def get_or_create_commit(sha, project):
+    commit = models.Commit.query.get(sha)
+    if commit is None:
+        commit = models.Commit(sha=sha, project=project)
+        models.db.session.add(commit)
+        models.db.session.flush()
+
+
 class GithubUpdateHandler(object):
     """ Constructed with an authenticated :mod:`github.Github` instance and a
         `data` dictionary describing the update.
@@ -36,11 +44,7 @@ class GithubUpdateHandler(object):
         project = models.Project.query.filter_by(name=project_name).one()
 
         head_sha = pull_request_data['head']['sha']
-        commit = models.Commit.query.get(head_sha)
-        if commit is None:
-            commit = models.Commit(sha=head_sha, project=project)
-            models.db.session.add(commit)
-            models.db.session.flush()
+        commit = get_or_create_commit(head_sha, project)
 
         pull = models.PullRequest.query.get((pr_number, project.id))
         if pull is None:
@@ -61,6 +65,15 @@ class GithubUpdateHandler(object):
         models.db.session.commit()
 
     def _handle_master_update(self):
+        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
+        project = models.Project.query.filter_by(name=project_name).one()
+
+        master_sha = self.data['head_commit']['sha']
+
+        commit = get_or_create_commit(master_sha, project)
+
+        project.master_sha = commit.sha
+
         # get all pulls related to that project and invalidate them
         for gh_pull in self.repo.get_pulls():
             self._handle_pull_request(gh_pull._rawData)
@@ -120,16 +133,17 @@ class GithubUpdateHandler(object):
 
         # Find out the current master SHA. Consider using local git to find
         # this to avoid the api call
-        master_sha = self.repo.get_branch('master').commit.sha
+        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
+        project = models.Project.query.filter_by(name=project_name).one()
 
         head_sha = data['head']['sha']
 
         try:
-            status = self.repo.compare(master_sha, head_sha)
+            status = self.repo.compare(project.master_sha, head_sha)
         except (UnknownObjectException, AssertionError):
             logger.warning(
                 'unable to perform up_to_date check between commits: '
-                '{}, {}'.format(master_sha, head_sha))
+                '{}, {}'.format(project.master_sha, head_sha))
             return
 
         if pull:

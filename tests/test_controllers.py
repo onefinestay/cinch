@@ -1,7 +1,8 @@
 import pytest
 
-from cinch.models import Project, JobType, Job, Commit
-from cinch.controllers import get_jobs, record_job_result
+from cinch.models import Project, JobType, Job, Commit, Build
+from cinch.controllers import (
+    get_jobs, record_job_result, get_successful_builds)
 
 
 @pytest.fixture(scope='session')
@@ -130,18 +131,65 @@ def test_record_job_result(session, fixtures):
 
 
 def test_get_successful_builds(session, fixtures):
-
-    # small_app@sha1 passes against library master
     library_master = "lib-master-sha"
+
+    # library@master passes unit tests
+    shas = {
+        'library': library_master
+    }
+    record_job_result('library_unit', 1, shas, True, "passed")
+
+    build_shas = shas
+    assert get_successful_builds('library', 'unit', build_shas) == [
+        "library_unit"
+    ]
+
+    # small_app@sha1 integration passes against library@master
     shas = {
         'small_app': 'sha1',
         'library': library_master
     }
     record_job_result('small_app_integration', 1, shas, True, "passed")
-    # UNFINSHED
 
+    build_shas = shas
+    assert get_successful_builds('small_app', 'integration', build_shas) == [
+        "small_app_integration"
+    ]
+    assert get_successful_builds('library', 'integration', build_shas) == [
+        "small_app_integration"
+    ]
 
+    # large_app@sha2 integration passes against library@master
+    shas = {
+        'large_app': 'sha2',
+        'library': library_master
+    }
+    record_job_result('large_app_integration', 1, shas, True, "passed")
 
+    build_shas = shas
+    # large_app@sha2 has passed integration against library@master
+    assert get_successful_builds('large_app', 'integration', build_shas) == [
+        "large_app_integration"
+    ]
 
+    build_shas['small_app'] = "sha1"
 
+    # small_app@sha1 has passed integration against library@master
+    # large_app@sha2 has passed integration against library@master
+    assert get_successful_builds('library', 'integration', build_shas) == [
+        "large_app_integration",
+        "small_app_integration"
+    ]
+
+    # small_app master is at sha1
+    small_app = session.query(Project).filter_by(name="small_app").one()
+    small_app.master_sha = "sha1"  # not a foreign key, so we can just write this
+    session.commit()
+
+    # so we can omit small_app for build_shas dict
+    build_shas.pop('small_app')
+    assert get_successful_builds('library', 'integration', build_shas) == [
+        "large_app_integration",
+        "small_app_integration"
+    ]
 

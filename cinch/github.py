@@ -115,10 +115,10 @@ class GithubUpdateHandler(object):
             pull.ahead_of_master = status.ahead_by
 
     @check
-    def is_mergable(self, pull, data):
+    def is_mergeable(self, pull, data):
         """ TODO!
         """
-        # pretty sure data['mergable'] is null at the point of the
+        # pretty sure data['mergeable'] is null at the point of the
         # hook being sent
 
     @check

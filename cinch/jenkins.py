@@ -3,8 +3,7 @@ import json
 
 from flask import request
 
-from cinch.auth import requires_auth
-from cinch.models import db, Job
+from cinch.models import db, Job, Build
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -18,21 +17,31 @@ def handle_data(data):
 
         data looks a little like this....
         {
-          "name": "***REMOVED***_unit",
-          "url": "job/***REMOVED***_unit/",
+          "name": "CInch",
+          "url": "job/CInch/",
           "build": {
-            "full_url": "http://***REMOVED***/job/***REMOVED***_unit/1954/",
-            "number": 1954,
+            "full_url": "http://***REMOVED***/job/CInch/2/",
+            "number": 2,
             "phase": "STARTED",
-            "url": "job/***REMOVED***_unit/1954/",
-            "parameters": {
-              "PLATFORM_REVISION": "master"
-            }
+            "url": "job/CInch/2/"
           }
         }
 
+        {
+          "name": "CInch",
+          "url": "job/CInch/",
+          "build": {
+            "full_url": "http://***REMOVED***/job/CInch/2/",
+            "number": 2,
+            "phase": "COMPLETED",
+            "status": "SUCCESS",
+            "url": "job/CInch/2/"
+          }
+        } 
+
     """
     data = json.loads(data)
+
     build = data['build']
     if 'status' not in build:
         name = data['name'] 
@@ -41,24 +50,25 @@ def handle_data(data):
         return
 
     job_name = data['name']
-    job = db.session.query(Job).filter_by(name='name')
-    if not job:
+    job_results = db.session.query(Job).filter_by(name=job_name)
+    jobs = job_results.count()
+    if not jobs:
         logger.info('Job {} does not exist')
         return
 
     build_number = build['number']
-    result = data['status']
+    job = job_results.one()
+    status = build['status']
+    success = True if status == 'SUCCESS' else False
 
     build = Build(
         build_number=build_number,
         job=job,
-        result=result
+        success=success,
+        status=status
     )
+
     db.session.add(build)
-    db.commit()
+    db.session.commit()
 
     logger.info('created Build')
-
-    
-    
-

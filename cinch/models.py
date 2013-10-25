@@ -3,7 +3,6 @@ from cinch import db
 
 STRING_LENGTH = 200
 
-
 job_projects = db.Table('job_projects',
     db.Column('job_id', db.Integer, db.ForeignKey('jobs.id'),
               primary_key=True),
@@ -31,11 +30,11 @@ class Job(db.Model):
     __tablename__ = "jobs"
 
     id = db.Column(db.Integer, primary_key=True)
-    jenkins_name = db.Column(db.String(STRING_LENGTH), unique=True,
-                             nullable=False)
+    name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
     type_id = db.Column(db.String(STRING_LENGTH),
                         db.ForeignKey('job_types.name'), nullable=False)
 
+    job_type = db.relationship('JobType')
     projects = db.relationship('Project', secondary=job_projects)
 
 
@@ -47,6 +46,9 @@ class PullRequest(db.Model):
                            primary_key=True)
     head_commit = db.Column(db.String(40), db.ForeignKey('commits.sha'),
                             nullable=False)
+
+    head = db.relationship('Commit')
+    project = db.relationship('Project')
 
 
 class Commit(db.Model):
@@ -77,7 +79,7 @@ class Build(db.Model):
     __tablename__ = "builds"
 
     id = db.Column(db.Integer, primary_key=True)
-    jenkins_build_id = db.Column(db.Integer)
+    build_number = db.Column(db.Integer)
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'))
     result = db.Column(db.Boolean, nullable=True)
 

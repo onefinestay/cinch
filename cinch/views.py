@@ -1,4 +1,4 @@
-from flask import g
+from flask import g, render_template
 
 from cinch import app
 from cinch.auth import requires_auth
@@ -33,16 +33,9 @@ def record_job_result(jenkins_name, jenkins_build_id, shas, result):
 
 
 @app.route('/')
+@requires_auth
 def index():
-    message = """
-        <p>Hello World!<br>CI is a cinch!<br>
-             <a href="/login/">login</a></br>
-             <a href="/logout/">logout</a></br>
-             <a href="/user">you</a></br>
-             <a href="/secret/">secret</a>
-        </p>"""
-
-    return message
+    return render_template('index.html')
 
 
 # test route

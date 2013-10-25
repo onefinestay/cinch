@@ -41,8 +41,6 @@ class GithubUpdateHandler(object):
             )
             db.session.add(pull)
 
-        pull.head_commit = pull_request_data['head']['sha']
-
         for check_method in get_checks(self):
             check_method()
 
@@ -121,6 +119,11 @@ class GithubUpdateHandler(object):
         """
         # pretty sure data['mergable'] is null at the point of the
         # hook being sent
+
+    @check
+    def current_head_commit(self):
+        self.pull.head_commit = self.data['pull_request']['head']['sha']
+
 
 handle_github_update = GithubUpdateHandler()
 

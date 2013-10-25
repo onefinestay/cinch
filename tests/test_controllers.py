@@ -1,8 +1,8 @@
 import pytest
 
-from cinch.models import Project, JobType, Job, Commit, Build
+from cinch.models import Project, JobType, Job, Commit
 from cinch.controllers import (
-    get_jobs, record_job_result, get_successful_builds)
+    get_jobs, record_job_result, get_successful_builds, test_check)
 
 
 @pytest.fixture(scope='session')
@@ -94,6 +94,11 @@ def test_get_jobs(fixtures):
     assert get_jobs("small_app", "unit").count() == 0
     assert get_jobs("small_app", "integration").all() == [
         fixtures['small_app_integration']
+    ]
+
+    assert get_jobs("large_app", "integration").all() == [
+        fixtures['large_app_integration'],
+        fixtures['mobile_integration'],
     ]
 
     assert get_jobs("library", "unit").count() == 1
@@ -193,3 +198,94 @@ def test_get_successful_builds(session, fixtures):
         "small_app_integration"
     ]
 
+
+def test_unit_test_check(fixtures):
+    library_master = "lib-master-sha"
+
+    # library@master passes unit tests
+    shas = {
+        'library': library_master
+    }
+    record_job_result('library_unit', 1, shas, True, "passed")
+
+    assert test_check("library", library_master, "unit")
+    assert not test_check("library", "some_other_sha", "unit")
+    assert not test_check("mobile", library_master, "unit")
+
+    # mobile@sha1 passes unit tests
+    shas = {
+        'mobile': "sha1"
+    }
+    record_job_result('mobile_unit', 1, shas, True, "passed")
+
+    assert test_check("mobile", "sha1", "unit")
+    assert not test_check("mobile", "some_other_sha", "unit")
+    assert not test_check("mobile", library_master, "unit")
+
+
+def test_integration_test_check(session, fixtures):
+    lib_sha = "lib-proposed-sha"
+
+    small_app = fixtures['small_app']
+    large_app = fixtures['large_app']
+    mobile = fixtures['mobile']
+
+    # set project master_shas
+    small_app.master_sha = "sha1"
+    large_app.master_sha = "sha2"
+    mobile.master_sha = "sha3"
+    session.commit()
+
+    # small_app@sha1 integration passes against library@lib_sha
+    shas = {
+        'small_app': 'sha1',
+        'library': lib_sha
+    }
+    record_job_result('small_app_integration', 1, shas, True, "passed")
+
+    # library integration not yet satisfied
+    assert not test_check('library', lib_sha, "integration")
+
+    # large_app@sha2 integration passes against library@lib_sha
+    shas = {
+        'large_app': 'sha2',
+        'library': lib_sha
+    }
+    record_job_result('large_app_integration', 1, shas, True, "passed")
+
+    # library integration not yet satisfied
+    assert not test_check('library', lib_sha, "integration")
+
+    # mobile@sha3 integration FAILS against library@lib_sha and large_app@sha2
+    shas = {
+        'mobile': 'sha3',
+        'large_app': 'sha2',
+        'library': lib_sha
+    }
+    record_job_result('mobile_integration', 1, shas, False, "aborted")
+
+    # library integration not yet satisfied
+    assert not test_check('library', lib_sha, "integration")
+
+    # mobile@sha3 integration PASSES against library@lib_sha,
+    # but  against large_app@sha4
+    shas = {
+        'mobile': 'sha3',
+        'large_app': 'sha4',
+        'library': lib_sha
+    }
+    record_job_result('mobile_integration', 1, shas, True, "passed")
+
+    # library integration not yet satisfied
+    assert not test_check('library', lib_sha, "integration")
+
+    # mobile@sha3 integration PASSES against library@lib_sha AND large_app@sha2
+    shas = {
+        'mobile': 'sha3',
+        'large_app': 'sha2',
+        'library': lib_sha
+    }
+    record_job_result('mobile_integration', 1, shas, True, "passed")
+
+    # library integration finally satisfied
+    assert test_check('library', lib_sha, "integration")

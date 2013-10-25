@@ -95,21 +95,7 @@ def test_check(project_name, project_sha, job_type):
     return len(set(job_names) - set(successful_jobs)) == 0
 
 
-def integration_test_check(project_name, project_sha):
-    return test_check(project_name, project_sha, "integration")
-
-
-def unit_test_check(project_name, project_sha):
-    return test_check(project_name, project_sha, "unit")
-
-
 def get_pull_request_status(pull_request, job_type):
     project = pull_request.project
-    jobs = get_jobs(project.name, job_type)
-    jobs = [job.name for job in jobs]
-    successful_jobs = get_successful_builds(project.name, job_type, {
-        project.name: pull_request.head_commit,
-    })
-
-    return (successful_jobs == jobs)
+    return test_check(project.name, pull_request.head_commit, job_type)
 

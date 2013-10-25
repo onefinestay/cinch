@@ -5,7 +5,7 @@ import logging
 from flask import request
 from github import Github, UnknownObjectException
 
-from cinch import app, db
+from cinch import app, models
 from cinch.check import check, get_checks
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ MASTER_REF = 'refs/heads/master'
 GITHUB_TOKEN = "***REMOVED***"
 
 REPO_TO_PROJECT_MAP = {
+    'cinch': 'cinch',
     '***REMOVED***': '***REMOVED***',
     '***REMOVED***-admin-screens': '***REMOVED***',
 }
@@ -32,20 +33,31 @@ class GithubUpdateHandler(object):
         pr_number = pull_request_data['number']
         # need to get project_id
         project_name = REPO_TO_PROJECT_MAP[self.repo.name]
-        project = db.Project.filter.filter_by(name=project_name).one()
-        pull = db.PullRequest.query.get(pr_number, project.id)
+        project = models.Project.query.filter_by(name=project_name).one()
 
+        head_sha = pull_request_data['head']['sha']
+        commit = models.Commit.query.get(head_sha)
+        if commit is None:
+            commit = models.Commit(sha=head_sha, project=project)
+            models.db.session.add(commit)
+            models.db.session.commit()
+
+        pull = models.PullRequest.query.get((pr_number, project.id))
         if pull is None:
             # we need to initialise the pull request as it's the
             # first time we've heard of it
-            pull = db.PullRequest(
+            pull = models.PullRequest(
                 number=pr_number,
                 project_id=project.id,
             )
-            db.session.add(pull)
+            models.db.session.add(pull)
+
+        pull.head_commit = commit.sha
 
         for check_method in get_checks(self):
             check_method(pull, pull_request_data)
+
+        models.db.session.commit()
 
     def _handle_master_update(self):
         # get all pulls related to that project and invalidate them
@@ -69,29 +81,29 @@ class GithubUpdateHandler(object):
         if pull_request_data is not None:
             self._handle_pull_request(pull_request_data)
 
-        if data['ref'] == MASTER_REF:
+        if 'ref' in data and data['ref'] == MASTER_REF:
+            # this is an update to the master branch
             self._handle_master_update()
-
-        db.session.commit()
 
     _repo = None
 
     @property
     def repo(self):
         if self._repo is None:
+            repo_data = self.data['repository']
             try:
-                owner_name = self.data['owner']['name']
-                repo_name = self.data['repository']['name']
+                owner_name = repo_data['owner']['login']
+                repo_name = repo_data['name']
             except KeyError:
                 logger.error(
                     'Unable to parse data. Malformed request:\n'
-                    '{}'.format(self.data))
+                    '{}'.format(repo_data.data))
                 return
 
-            self.repo_name = '{}/{}'.format(owner_name, repo_name)
+            repo_id = '{}/{}'.format(owner_name, repo_name)
 
             try:
-                self._repo = self.gh.get_repo(repo_name)
+                self._repo = self.gh.get_repo(repo_id)
             except UnknownObjectException:
                 self._repo = None
 
@@ -124,9 +136,6 @@ class GithubUpdateHandler(object):
         # pretty sure data['mergeable'] is null at the point of the
         # hook being sent
 
-    @check
-    def current_head_commit(self, pull, data):
-        pull.head_commit = data['head']['sha']
 
 
 handle_github_update = GithubUpdateHandler()

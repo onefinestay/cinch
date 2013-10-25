@@ -16,6 +16,7 @@ def status_label(status):
     else:
         return "warning"
 
+
 @app.route('/')
 @requires_auth
 def index():
@@ -27,17 +28,18 @@ def index():
         integration_status = get_pull_request_status(pull, "integration")
         pull.checks = [
             {
-                "name":"unit tests",
+                "name": "unit tests",
                 "short_name": "UT",
                 "status": status_label(unit_status),
             },
             {
-                "name":"integration tests",
+                "name": "integration tests",
                 "short_name": "IT",
                 "status": status_label(integration_status),
             },
         ]
-    return render_template('index.html', pull_requests=pulls, projects=projects)
+    return render_template(
+        'index.html', pull_requests=pulls, projects=projects)
 
 
 # test route

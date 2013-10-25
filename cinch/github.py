@@ -77,7 +77,8 @@ class GithubUpdateHandler(object):
 
         if (
             self.repo is None or
-            models.Project.query.filter_by(repo_name=self.repo.name).count() == 0,
+            models.Project.query.filter_by(
+                repo_name=self.repo.name).count() == 0,
         ):
             logger.warning(
                 'received webhook for unconfigured project:\n'

@@ -88,10 +88,12 @@ class Build(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     build_number = db.Column(db.Integer)
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'))
-    result = db.Column(db.Boolean, nullable=True)
+    success = db.Column(db.Boolean, nullable=True)
+    status = db.Column(db.Text, nullable=True, default="")
 
-    job = db.relationship('Job')
-    commits = db.relationship('Commit', secondary=build_commits)
+    job = db.relationship('Job', backref='builds')
+    commits = db.relationship(
+        'Commit', secondary=build_commits, backref='builds')
 
 
 

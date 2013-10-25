@@ -1,10 +1,7 @@
 import logging
 import json
 
-from flask import request
-
-from cinch.auth import requires_auth
-from cinch.models import db, Job
+from cinch.controllers import record_job_result
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -18,15 +15,27 @@ def handle_data(data):
 
         data looks a little like this....
         {
-          "name": "***REMOVED***_unit",
-          "url": "job/***REMOVED***_unit/",
+          "name": "CInch",
+          "url": "job/CInch/",
           "build": {
-            "full_url": "http://***REMOVED***/job/***REMOVED***_unit/1954/",
-            "number": 1954,
+            "full_url": "http://***REMOVED***/job/CInch/2/",
+            "number": 2,
             "phase": "STARTED",
-            "url": "job/***REMOVED***_unit/1954/",
+            "url": "job/CInch/2/"
+          }
+        }
+
+        {
+          "name": "CInch",
+          "url": "job/CInch/",
+          "build": {
+            "full_url": "http://***REMOVED***/job/CInch/3/",
+            "number": 3,
+            "phase": "FINISHED",
+            "status": "SUCCESS",
+            "url": "job/CInch/3/",
             "parameters": {
-              "PLATFORM_REVISION": "master"
+              "CINCH_SHA": "master"
             }
           }
         }
@@ -34,6 +43,10 @@ def handle_data(data):
     """
     data = json.loads(data)
     build = data['build']
+
+    if 'parameters' not in build:
+        raise Exception('This is not a parametarized build')
+
     if 'status' not in build:
         name = data['name'] 
         phase = build['phase']
@@ -41,24 +54,16 @@ def handle_data(data):
         return
 
     job_name = data['name']
-    job = db.session.query(Job).filter_by(name='name')
-    if not job:
-        logger.info('Job {} does not exist')
-        return
-
     build_number = build['number']
-    result = data['status']
+    shas = {
+        key[:-4].lower(): value
+        for key, value in build['parameters'].items()
+            if key.endswith('_SHA')
+    }
 
-    build = Build(
-        build_number=build_number,
-        job=job,
-        result=result
-    )
-    db.session.add(build)
-    db.commit()
+    status = build['status']
+    success = True if status == 'SUCCESS' else False
+
+    record_job_result(job_name, build_number, shas, success, status)
 
     logger.info('created Build')
-
-    
-    
-

@@ -1,5 +1,9 @@
- .container {
+    .container {
         margin: 20px auto;
+    }
+    
+    .pr-hidden {
+        display: none;
     }
     
     #ready_pulls {

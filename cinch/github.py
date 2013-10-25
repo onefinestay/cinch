@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import logging
 from flask import request
 from github import Github, UnknownObjectException

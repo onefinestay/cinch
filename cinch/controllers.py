@@ -9,7 +9,6 @@ def record_job_result(job_name, build_number, shas, success, status):
             'other_project': <sha>
         }
     """
-
     job = db.session.query(Job).filter(Job.name == job_name).one()
 
     # sanity check
@@ -19,7 +18,9 @@ def record_job_result(job_name, build_number, shas, success, status):
 
     for project_name, sha in shas.items():
         project = db.session.query(Project).filter_by(name=project_name).one()
-        commit = Commit(sha=sha, project=project)
+        commit = db.session.query(Commit).get(sha)
+        if commit is None:
+            commit = Commit(sha=sha, project=project)
         build.commits.append(commit)
 
     db.session.add(build)

@@ -1,9 +1,10 @@
 from flask import g, request, render_template
 import logging
 
-from cinch import app
+from cinch import app, db
 from cinch.auth.decorators import requires_auth
 from cinch.jenkins import handle_data
+from cinch.models import PullRequest
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,8 @@ logger = logging.getLogger(__name__)
 @app.route('/')
 @requires_auth
 def index():
+    session = db.session
+    pulls = session.query(PullRequest).all()
     return render_template('index.html')
 
 

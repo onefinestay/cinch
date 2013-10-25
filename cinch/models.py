@@ -65,7 +65,7 @@ class Commit(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
                            nullable=False)
 
-    project = db.relationship('Project')
+    project = db.relationship('Project', foreign_keys=[project_id])
 
 """
 class CodeReview():

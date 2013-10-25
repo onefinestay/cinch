@@ -14,15 +14,17 @@
                     <img src="../static/img/cinch-logo-sm.png">
                 </a>
             </div>
+            {% if session['gh-username'] %}
             <div class="collapse navbar-collapse navbar-ex8-collapse">
                 <ul class="nav navbar-nav pull-right">
                     <li class="active"><a href="https://github.com/">
-                        <img id="gh-gravatar" width="20" height="20" src="https://1.gravatar.com/avatar/b65d018873a79798dbbaf45177383fd1?d=https%3A%2F%2Fidenticons.github.com%2Ff053777eca89cde82d5dab911c928b93.png&amp;r=x&amp;s=140" />
-                        gh-username
+                        <img id="gh-gravatar" width="20" height="20" src="{{ session['gh-gravatar'] }}&amp;s=140" />
+                        {{ session['gh-username'] }}
                     </a></li>
                     <li><a href="/logout/">Logout</a></li>
                 </ul>
             </div>
+            {% endif %}
         </nav>
         
         {% block body %}{% endblock %}

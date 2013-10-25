@@ -22,6 +22,8 @@ def get_or_create_commit(sha, project):
         models.db.session.add(commit)
         models.db.session.flush()
 
+    return commit
+
 
 class GithubUpdateHandler(object):
     """ Constructed with an authenticated :mod:`github.Github` instance and a
@@ -77,7 +79,8 @@ class GithubUpdateHandler(object):
 
         if (
             self.repo is None or
-            models.Project.query.filter_by(repo_name=self.repo.name).count() == 0,
+            models.Project.query.filter_by(
+                repo_name=self.repo.name).count() == 0
         ):
             logger.warning(
                 'received webhook for unconfigured project:\n'

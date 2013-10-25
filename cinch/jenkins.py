@@ -48,7 +48,7 @@ def handle_data(data):
         raise Exception('This is not a parametarized build')
 
     if 'status' not in build:
-        name = data['name'] 
+        name = data['name']
         phase = build['phase']
         logger.info('build {} {}'.format(name, phase))
         return
@@ -57,8 +57,7 @@ def handle_data(data):
     build_number = build['number']
     shas = {
         key[:-4].lower(): value
-        for key, value in build['parameters'].items()
-            if key.endswith('_SHA')
+        for key, value in build['parameters'].items() if key.endswith('_SHA')
     }
 
     status = build['status']

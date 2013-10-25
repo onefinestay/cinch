@@ -22,6 +22,8 @@ def get_or_create_commit(sha, project):
         models.db.session.add(commit)
         models.db.session.flush()
 
+    return commit
+
 
 class GithubUpdateHandler(object):
     """ Constructed with an authenticated :mod:`github.Github` instance and a

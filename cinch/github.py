@@ -14,12 +14,6 @@ MASTER_REF = 'refs/heads/master'
 
 GITHUB_TOKEN = "***REMOVED***"
 
-REPO_TO_PROJECT_MAP = {
-    'cinch': 'cinch',
-    '***REMOVED***': '***REMOVED***',
-    '***REMOVED***-admin-screens': '***REMOVED***',
-}
-
 
 def get_or_create_commit(sha, project):
     commit = models.Commit.query.get(sha)
@@ -39,9 +33,8 @@ class GithubUpdateHandler(object):
         """
 
         pr_number = pull_request_data['number']
-        # need to get project_id
-        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
-        project = models.Project.query.filter_by(name=project_name).one()
+        project = models.Project.query.filter_by(
+            repo_name=self.repo.name).one()
 
         head_sha = pull_request_data['head']['sha']
         commit = get_or_create_commit(head_sha, project)
@@ -65,8 +58,8 @@ class GithubUpdateHandler(object):
         models.db.session.commit()
 
     def _handle_master_update(self):
-        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
-        project = models.Project.query.filter_by(name=project_name).one()
+        project = models.Project.query.filter_by(
+            repo_name=self.repo.name).one()
 
         master_sha = self.data['head_commit']['sha']
 
@@ -84,7 +77,7 @@ class GithubUpdateHandler(object):
 
         if (
             self.repo is None or
-            self.repo.name not in REPO_TO_PROJECT_MAP.keys()
+            models.Project.query.filter_by(repo_name=self.repo.name).count() == 0,
         ):
             logger.warning(
                 'received webhook for unconfigured project:\n'
@@ -133,8 +126,8 @@ class GithubUpdateHandler(object):
 
         # Find out the current master SHA. Consider using local git to find
         # this to avoid the api call
-        project_name = REPO_TO_PROJECT_MAP[self.repo.name]
-        project = models.Project.query.filter_by(name=project_name).one()
+        project = models.Project.query.filter_by(
+            repo_name=self.repo.name).one()
 
         head_sha = data['head']['sha']
 

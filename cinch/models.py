@@ -16,6 +16,7 @@ class Project(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
+    github_repo = db.Column(db.Text, nullable=False, unique=True)
     master_sha = db.Column(db.String(40), db.ForeignKey('commits.sha'),
                            nullable=True)
 

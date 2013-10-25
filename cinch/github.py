@@ -42,11 +42,12 @@ class GithubUpdateHandler(object):
             db.session.add(pull)
 
         for check_method in get_checks(self):
-            check_method()
+            check_method(pull, pull_request_data)
 
     def _handle_master_update(self):
-        # handle update to master... invalidate other checks and the like
-        pass
+        # get all pulls related to that project and invalidate them
+        for gh_pull in self.repo.get_pulls():
+            self._handle_pull_request(gh_pull._rawData)
 
     def __call__(self, gh, data):
         self.gh = gh
@@ -94,12 +95,12 @@ class GithubUpdateHandler(object):
         return self._repo
 
     @check
-    def up_to_date(self):
+    def up_to_date(self, pull, data):
         # Find out the current master SHA. Consider using local git to find
         # this to avoid the api call
         master_sha = self.repo.get_branch('master').commit.sha
 
-        head_sha = self.data.get('after')
+        head_sha = data['head']['sha']
 
         try:
             status = self.repo.compare(master_sha, head_sha)
@@ -109,20 +110,20 @@ class GithubUpdateHandler(object):
                 '{}, {}'.format(master_sha, head_sha))
             return
 
-        if self.pull:
-            self.pull.behind_master = status.behind_by
-            self.pull.ahead_of_master = status.ahead_by
+        if pull:
+            pull.behind_master = status.behind_by
+            pull.ahead_of_master = status.ahead_by
 
     @check
-    def is_mergable(self):
+    def is_mergable(self, pull, data):
         """ TODO!
         """
         # pretty sure data['mergable'] is null at the point of the
         # hook being sent
 
     @check
-    def current_head_commit(self):
-        self.pull.head_commit = self.data['pull_request']['head']['sha']
+    def current_head_commit(self, pull, data):
+        pull.head_commit = data['head']['sha']
 
 
 handle_github_update = GithubUpdateHandler()

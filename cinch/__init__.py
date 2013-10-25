@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from flask.ext.admin import Admin
 from flask.ext.sqlalchemy import SQLAlchemy
 
 
@@ -21,6 +22,8 @@ for key, value in GITHUB_CONF.items():
 app.secret_key = '***REMOVED***'
 
 db = SQLAlchemy(app)
+
+admin = Admin(app)
 
 import cinch.views
 import cinch.auth.views

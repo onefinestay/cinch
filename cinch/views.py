@@ -6,8 +6,12 @@ from cinch.auth.decorators import requires_auth
 from cinch.controllers import get_pull_request_status
 from cinch.jenkins import handle_data
 from cinch.models import PullRequest, Project
+from cinch.admin import AdminView
 
 logger = logging.getLogger(__name__)
+
+
+AdminView  # pyflakes. just want the module imported
 
 
 def status_label(status):
@@ -54,7 +58,7 @@ def index():
             },
         ]
         pull.sync_label = sync_label(pull.ahead_of_master, pull.behind_master)
-        
+
     return render_template(
         'index.html', pull_requests=pulls, projects=projects)
 

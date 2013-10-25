@@ -23,11 +23,17 @@ class Project(db.Model):
 
     jobs = db.relationship('Job', secondary=job_projects)
 
+    def __str__(self):
+        return self.name
+
 
 class JobType(db.Model):
     __tablename__ = "job_types"
 
     name = db.Column(db.String(STRING_LENGTH), primary_key=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Job(db.Model):
@@ -40,6 +46,9 @@ class Job(db.Model):
 
     job_type = db.relationship('JobType')
     projects = db.relationship('Project', secondary=job_projects)
+
+    def __str__(self):
+        return "{} {}".format(self.name, self.type_id)
 
 
 class PullRequest(db.Model):

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>cinch dashboard</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet" media="all">
+        <link href="../static/css/cinch.css" rel="stylesheet" media="all">
+    </head>
+    <body>
+    <div class="container">
+        <nav class="navbar navbar-inverse" role="navigation">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/">
+                    <img src="../static/img/cinch-logo-sm.png">
+                </a>
+            </div>
+            <div class="collapse navbar-collapse navbar-ex8-collapse">
+                <ul class="nav navbar-nav pull-right">
+                    <li class="active"><a href="https://github.com/">
+                        <img id="gh-gravatar" width="20" height="20" src="https://1.gravatar.com/avatar/b65d018873a79798dbbaf45177383fd1?d=https%3A%2F%2Fidenticons.github.com%2Ff053777eca89cde82d5dab911c928b93.png&amp;r=x&amp;s=140" />
+                        gh-username
+                    </a></li>
+                    <li><a href="/logout/">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+        
+        {% block body %}{% endblock %}
+        
+    </div><!-- close container div -->
+        <script src="../static/js/jquery.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+        <script src="../static/js/masonry.js"></script>
+        <script src="../static/js/cinch.js"></script>
+    </body>
+</html>

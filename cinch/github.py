@@ -49,6 +49,7 @@ class GithubUpdateHandler(object):
             pull = models.PullRequest(
                 number=pr_number,
                 project_id=project.id,
+                owner=pull_request_data['user']['login'],
             )
             models.db.session.add(pull)
 

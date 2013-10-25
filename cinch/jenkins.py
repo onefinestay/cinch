@@ -1,10 +1,7 @@
 import logging
 import json
 
-from flask import request
-
 from cinch.controllers import record_job_result
-from cinch.models import db, Job, Build
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -1,4 +1,4 @@
-from cinch.models import db, Job, Project, Commit, Build, PullRequest
+from cinch.models import db, Job, Project, Commit, Build
 
 
 def record_job_result(job_name, build_number, shas, success, status):

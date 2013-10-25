@@ -4,8 +4,7 @@ import logging
 from flask import g, request
 
 from cinch import app
-from cinch.auth import requires_auth
-from cinch.models import db, Job, Project, Commit, Build
+from cinch.auth.decorators import requires_auth
 from cinch.jenkins import handle_data
 
 logger = logging.getLogger(__name__)

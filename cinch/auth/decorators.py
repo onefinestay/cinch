@@ -2,8 +2,6 @@ from functools import wraps
 
 from flask import session, redirect, url_for
 
-from cinch.auth.views import login
-
 
 def is_authenticated():
     return session.get('access_token')

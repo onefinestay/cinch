@@ -1,4 +1,4 @@
-from flask import session, url_for, redirect, g
+from flask import session, url_for, redirect
 from flask.ext.github import GitHub
 
 from cinch import app

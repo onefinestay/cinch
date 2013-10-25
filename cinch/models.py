@@ -17,8 +17,7 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
     repo_name = db.Column(db.String(STRING_LENGTH), nullable=False, unique=True)
-    master_sha = db.Column(db.String(40),
-                           nullable=True)
+    master_sha = db.Column(db.String(40), nullable=True)
 
     jobs = db.relationship('Job', secondary=job_projects)
 

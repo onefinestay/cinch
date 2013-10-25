@@ -3,6 +3,7 @@ import json
 
 from flask import request
 
+from cinch.controllers import record_job_result
 from cinch.models import db, Job, Build
 
 logger = logging.getLogger(__name__)
@@ -31,18 +32,24 @@ def handle_data(data):
           "name": "CInch",
           "url": "job/CInch/",
           "build": {
-            "full_url": "http://***REMOVED***/job/CInch/2/",
-            "number": 2,
-            "phase": "COMPLETED",
+            "full_url": "http://***REMOVED***/job/CInch/3/",
+            "number": 3,
+            "phase": "FINISHED",
             "status": "SUCCESS",
-            "url": "job/CInch/2/"
+            "url": "job/CInch/3/",
+            "parameters": {
+              "CINCH_SHA": "master"
+            }
           }
-        } 
+        }
 
     """
     data = json.loads(data)
-
     build = data['build']
+
+    if 'parameters' not in build:
+        raise Exception('This is not a parametarized build')
+
     if 'status' not in build:
         name = data['name'] 
         phase = build['phase']
@@ -50,25 +57,16 @@ def handle_data(data):
         return
 
     job_name = data['name']
-    job_results = db.session.query(Job).filter_by(name=job_name)
-    jobs = job_results.count()
-    if not jobs:
-        logger.info('Job {} does not exist')
-        return
-
     build_number = build['number']
-    job = job_results.one()
+    shas = {
+        key[:-4].lower(): value
+        for key, value in build['parameters'].items()
+            if key.endswith('_SHA')
+    }
+
     status = build['status']
     success = True if status == 'SUCCESS' else False
 
-    build = Build(
-        build_number=build_number,
-        job=job,
-        success=success,
-        status=status
-    )
-
-    db.session.add(build)
-    db.session.commit()
+    record_job_result(job_name, build_number, shas, success, status)
 
     logger.info('created Build')

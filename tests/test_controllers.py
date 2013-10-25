@@ -37,10 +37,10 @@ def fixtures(session):
     """
 
     # projects
-    library = Project(name="library")
-    large_app = Project(name="large_app")
-    small_app = Project(name="small_app")
-    mobile = Project(name="mobile")
+    library = Project(name="library", repo_name='library')
+    large_app = Project(name="large_app", repo_name='large_app')
+    small_app = Project(name="small_app", repo_name='small_app')
+    mobile = Project(name="mobile", repo_name='mobile')
 
     # job types
     unit = JobType(name="unit")
@@ -99,6 +99,7 @@ def test_get_jobs(fixtures):
     assert get_jobs("library", "integration").all() == [
         fixtures['large_app_integration'],
         fixtures['small_app_integration'],
+        fixtures['mobile_integration'],
     ]
 
 
@@ -111,7 +112,7 @@ def test_record_job_result(session, fixtures):
         'small_app': 'sha1',
         'library': library_master
     }
-    record_job_result('small_app_integration', 1, shas, True)
+    record_job_result('small_app_integration', 1, shas, True, "passed")
 
     assert session.query(Commit).count() == 2
     assert session.query(Commit).get(library_master).project.name == "library"
@@ -122,15 +123,22 @@ def test_record_job_result(session, fixtures):
         'large_app': 'sha2',
         'library': library_master
     }
-    record_job_result('large_app_integration', 1, shas, True)
+    record_job_result('large_app_integration', 1, shas, True, "passed")
 
     assert session.query(Commit).count() == 3
     assert session.query(Commit).get("sha2").project.name == "large_app"
 
 
+def test_get_successful_builds(session, fixtures):
 
-
-
+    # small_app@sha1 passes against library master
+    library_master = "lib-master-sha"
+    shas = {
+        'small_app': 'sha1',
+        'library': library_master
+    }
+    record_job_result('small_app_integration', 1, shas, True, "passed")
+    # UNFINSHED
 
 
 

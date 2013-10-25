@@ -41,12 +41,9 @@ def get_successful_builds(project_name, job_type, branch_shas):
             library: my_branch,
         }
     """
-
     jobs = get_jobs(project_name, job_type)
 
-
     jobs_with_successful_builds = []
-
 
     for job in jobs:
         # it should be possible to do this more efficiently with some

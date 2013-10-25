@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import json
 import logging
 from flask import request
 from github import Github, UnknownObjectException
@@ -140,6 +141,7 @@ def accept_github_update():
 
     gh = Github(token)
     data = request.form['payload']
+    data = json.loads(data)
 
     handle_github_update(gh, data)
 

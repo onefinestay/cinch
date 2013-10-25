@@ -67,3 +67,12 @@ def get_successful_builds(project_name, job_type, branch_shas):
 
     return jobs_with_successful_builds
 
+
+def get_pull_request_status(pull_request, job_type):
+    project = pull_request.project
+    jobs = get_jobs(project.name, job_type)
+    successful_jobs = get_successful_builds(project.name, job_type, {
+        project.name: pull_request.head_commit,
+    })
+
+    return (successful_jobs == jobs)

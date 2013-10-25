@@ -5,17 +5,10 @@ from cinch import app
 
 github = GitHub(app)
 
-@app.before_request
-def before_request():
-    if 'access_token' in session:
-        g.access_token = session['access_token']
-    else:
-        g.access_token = None
-
 
 @github.access_token_getter
 def token_getter():
-    return g.access_token
+    return session.get('access_token')
 
 
 @app.route('/good-to-go')
@@ -41,13 +34,14 @@ def login():
 @app.route('/logout/')
 def logout():
     session.pop('access_token', None)
+
     return redirect(url_for('index'))
 
 
 @app.route('/user')
 def user():
-    if g.access_token:
-        return 'hello %s' % g.access_token
+    if session.get('access_token'):
+        return 'hello %s' % session['access_token']
     return 'you are nothing!'
 
 
@@ -58,4 +52,5 @@ def authorized(access_token):
         return redirect(url_for('failed'))
 
     session['access_token'] = access_token
+
     return redirect(url_for('authenticated'))

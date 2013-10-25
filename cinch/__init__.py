@@ -1,21 +1,23 @@
+import os
+
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-try:
-    from local_settings import (
-        GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_CALLBACK_URL)
-except ImportError:
-    raise Exception('create a local_settings.py defining '
-                    'GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET and '
-                    'GITHUB_CALLBACK_URL for Cinch.')
+
+GITHUB_CONF = {}
+GITHUB_KEYS = [
+    'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_CALLBACK_URL',
+]
+for key in GITHUB_KEYS:
+    GITHUB_CONF[key] = os.environ[key]
+
 
 app = Flask(__name__)
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/cinch'
-app.config['GITHUB_CLIENT_ID'] = GITHUB_CLIENT_ID
-app.config['GITHUB_CLIENT_SECRET'] = GITHUB_CLIENT_SECRET
-app.config['GITHUB_CALLBACK_URL'] = GITHUB_CALLBACK_URL
+for key, value in GITHUB_CONF.items():
+    app.config[key] = value
 app.secret_key = '***REMOVED***'
 
 db = SQLAlchemy(app)

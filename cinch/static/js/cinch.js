@@ -77,7 +77,6 @@ $( document ).ready(function(){
 
     var $container = $('#pr-container');
     $container.masonry({
-      columnWidth: 270,
       itemSelector: '.pull_request',
       isAnimated: true,
       animationOptions: {

@@ -22,3 +22,4 @@ db = SQLAlchemy(app)
 
 import cinch.views
 import cinch.auth.views
+import cinch.github

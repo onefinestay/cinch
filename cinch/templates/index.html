@@ -28,8 +28,8 @@
                     </a>
                 </td>
                 <td>
-                    <span class="badge badge-warning">+ {{ ahead_of_master }}</span>
-                    <span class="badge badge-success">- {{ behind_master }}</span>
+                    <span class="badge badge-{{ pull.sync_label }}">+ {{ ahead_of_master }}</span>
+                    <span class="badge badge-{{ pull.sync_label }}">- {{ behind_master }}</span>
                     {% for check in pull.checks %}
                     <span class="label label-success">{{ check.name }}</span>
                     {% endfor %}
@@ -88,8 +88,8 @@
                 <span title="{{ check.name }}" class="label label-{{ check.status }}">{{ check.short_name }}</span>
                 {% endfor %}
                 <span  class="pull-right">
-                    <span class="badge badge-warning">+ {{ pull.ahead_of_master }}</span>
-                    <span class="badge badge-error">- {{ pull.behind_master }}</span>
+                    <span class="badge badge-{{ pull.sync_label }}">+ {{ pull.ahead_of_master }}</span>
+                    <span class="badge badge-{{ pull.sync_label }}">- {{ pull.behind_master }}</span>
                 </span>
             </div>
         </div>

@@ -16,6 +16,21 @@ def status_label(status):
     else:
         return "warning"
 
+def sync_label(ahead, behind):
+    """ Changes the color of the label in behind and ahead of master
+    The thinking is:
+        * ahead and behind == error
+        * ahead not behind == success
+        * not ahead but behind == shouldn't show
+        * not ahead and not behind == shouldn't show
+    """
+    if ahead == 0:
+        return "warning"
+    if behind > 0:
+        return "warning"
+    else:
+        return "success"
+
 
 @app.route('/')
 @requires_auth
@@ -38,6 +53,8 @@ def index():
                 "status": status_label(integration_status),
             },
         ]
+        pull.sync_label = sync_label(pull.ahead_of_master, pull.behind_master)
+        
     return render_template(
         'index.html', pull_requests=pulls, projects=projects)
 

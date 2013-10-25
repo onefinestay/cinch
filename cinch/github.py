@@ -40,7 +40,7 @@ class GithubUpdateHandler(object):
         if commit is None:
             commit = models.Commit(sha=head_sha, project=project)
             models.db.session.add(commit)
-            models.db.session.commit()
+            models.db.session.flush()
 
         pull = models.PullRequest.query.get((pr_number, project.id))
         if pull is None:
@@ -111,6 +111,12 @@ class GithubUpdateHandler(object):
 
     @check
     def up_to_date(self, pull, data):
+        # update row with null values to stop parallel processes from
+        # picking up stale state while we look stuff up from github
+        pull.behind_master = None
+        pull.ahead_of_master = None
+        models.db.session.commit()
+
         # Find out the current master SHA. Consider using local git to find
         # this to avoid the api call
         master_sha = self.repo.get_branch('master').commit.sha
@@ -137,7 +143,6 @@ class GithubUpdateHandler(object):
         # hook being sent
 
 
-
 handle_github_update = GithubUpdateHandler()
 
 
@@ -145,10 +150,9 @@ handle_github_update = GithubUpdateHandler()
 def accept_github_update():
     """ View for github web hooks to handle updates
     """
-    # TODO: if user is logged in, use their token instead of the default one
-    token = GITHUB_TOKEN
+    # TODO: verify request is from github
 
-    gh = Github(token)
+    gh = Github(GITHUB_TOKEN)
     data = request.form['payload']
     data = json.loads(data)
 

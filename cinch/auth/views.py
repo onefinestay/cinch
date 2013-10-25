@@ -10,22 +10,27 @@ github = GitHub(app)
 def token_getter():
     return session.get('access_token')
 
+
 @app.route('/failed')
 def failed():
     return render_template('authentication_failed.html')
+
 
 @app.route('/unauthenticated')
 def unauthenticated():
     return redirect(url_for('login'))
 
+
 @app.route('/login/')
 def login():
     return github.authorize()
+
 
 @app.route('/logout/')
 def logout():
     session.clear()
     return render_template('logged_out.html')
+
 
 @app.route('/user')
 def user():

@@ -14,7 +14,11 @@ def record_job_result(job_name, build_number, shas, success, status):
     # sanity check
     assert set([p.name for p in job.projects]) == set(shas.keys())
 
-    build = Build(build_number=build_number, job=job, success=success, status=status)
+    build = Build(
+        build_number=build_number,
+        job=job,
+        success=success,
+        status=status)
 
     for project_name, sha in shas.items():
         project = db.session.query(Project).filter_by(name=project_name).one()
@@ -99,9 +103,13 @@ def unit_test_check(project_name, project_sha):
     return test_check(project_name, project_sha, "unit")
 
 
+def get_pull_request_status(pull_request, job_type):
+    project = pull_request.project
+    jobs = get_jobs(project.name, job_type)
+    jobs = [job.name for job in jobs]
+    successful_jobs = get_successful_builds(project.name, job_type, {
+        project.name: pull_request.head_commit,
+    })
 
-
-
-
-
+    return (successful_jobs == jobs)
 

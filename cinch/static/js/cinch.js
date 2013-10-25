@@ -1,5 +1,4 @@
 var Clinch = Clinch || {};
-Clinch.GHUsername = "somedude";
 
 Clinch.AttachEvents = function() {
     $("#filter-username").click(function(){

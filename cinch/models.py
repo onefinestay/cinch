@@ -3,7 +3,8 @@ from cinch import db
 
 STRING_LENGTH = 200
 
-job_projects = db.Table('job_projects',
+job_projects = db.Table(
+    'job_projects',
     db.Column('job_id', db.Integer, db.ForeignKey('jobs.id'),
               primary_key=True),
     db.Column('project_id', db.Integer, db.ForeignKey('projects.id'),
@@ -16,9 +17,9 @@ class Project(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
-    repo_name = db.Column(db.String(STRING_LENGTH), nullable=False, unique=True)
-    master_sha = db.Column(db.String(40),
-                           nullable=True)
+    repo_name = db.Column(
+        db.String(STRING_LENGTH), nullable=False, unique=True)
+    master_sha = db.Column(db.String(40), nullable=True)
 
     jobs = db.relationship('Job', secondary=job_projects)
 
@@ -65,7 +66,7 @@ class Commit(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
                            nullable=False)
 
-    project = db.relationship('Project')
+    project = db.relationship('Project', foreign_keys=[project_id])
 
 """
 class CodeReview():
@@ -74,7 +75,8 @@ class CodeReview():
     status
 """
 
-build_commits = db.Table('build_commits',
+build_commits = db.Table(
+    'build_commits',
     db.Column('build_id', db.Integer, db.ForeignKey('builds.id'),
               primary_key=True),
     db.Column('commit_sha', db.String(40), db.ForeignKey('commits.sha'),
@@ -94,6 +96,3 @@ class Build(db.Model):
     job = db.relationship('Job', backref='builds')
     commits = db.relationship(
         'Commit', secondary=build_commits, backref='builds')
-
-
-

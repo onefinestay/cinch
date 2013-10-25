@@ -1,4 +1,4 @@
-from cinch.models import db, Job, Project, Commit, Build, PullRequest
+from cinch.models import db, Job, Project, Commit, Build
 
 
 def record_job_result(job_name, build_number, shas, result):
@@ -33,6 +33,38 @@ def get_jobs(project_name, job_type):
         Job.type_id == job_type)
 
 
+def get_successful_builds(project_name, job_type, branch_shas):
+    """
+
+        branch_shas= {
+            library: my_branch,
+        }
+    """
+
+    jobs = get_jobs(project_name, job_type)
 
 
+    jobs_with_successful_builds = []
 
+
+    for job in jobs:
+        # it should be possible to do this more efficiently with some
+        # well written sql
+
+        shas = {
+            project.name: project.master_sha
+            for project in job.projects
+        }
+        shas.update(branch_shas)
+
+        for build in job.builds:
+            commits = {
+                commit.project.name: commit.sha
+                for commit in build.commits
+            }
+
+            if commits == shas and build.result:
+                jobs_with_successful_builds.append(job.name)
+                break
+
+    return jobs_with_successful_builds

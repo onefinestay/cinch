@@ -89,8 +89,9 @@ class Build(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'))
     result = db.Column(db.Boolean, nullable=True)
 
-    job = db.relationship('Job')
-    commits = db.relationship('Commit', secondary=build_commits)
+    job = db.relationship('Job', backref='builds')
+    commits = db.relationship(
+        'Commit', secondary=build_commits, backref='builds')
 
 
 

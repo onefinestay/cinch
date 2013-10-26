@@ -138,9 +138,8 @@ class GithubUpdateHandler(object):
                 '{}, {}'.format(project.master_sha, head_sha))
             return
 
-        if pull:
-            pull.behind_master = status.behind_by
-            pull.ahead_of_master = status.ahead_by
+        pull.behind_master = status.behind_by
+        pull.ahead_of_master = status.ahead_by
 
         # TODO: check mergeable status
 

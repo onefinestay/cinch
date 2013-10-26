@@ -54,8 +54,7 @@ class GithubUpdateHandler(object):
 
         pull.head_commit = commit.sha
 
-        for check_method in get_checks(self):
-            check_method(pull, pull_request_data)
+
 
         models.db.session.commit()
 
@@ -119,8 +118,7 @@ class GithubUpdateHandler(object):
 
         return self._repo
 
-    @check
-    def up_to_date(self, pull, data):
+    def update_pull_data(self, pull, data):
         # update row with null values to stop parallel processes from
         # picking up stale state while we look stuff up from github
         pull.behind_master = None
@@ -132,13 +130,11 @@ class GithubUpdateHandler(object):
         project = models.Project.query.filter_by(
             repo_name=self.repo.name).one()
 
-        head_sha = data['head']['sha']
-
         try:
-            status = self.repo.compare(project.master_sha, head_sha)
+            status = self.repo.compare(project.master_sha, pull.head_commit)
         except (UnknownObjectException, AssertionError):
             logger.warning(
-                'unable to perform up_to_date check between commits: '
+                'unable to update pull request when comparing commits: '
                 '{}, {}'.format(project.master_sha, head_sha))
             return
 
@@ -146,12 +142,7 @@ class GithubUpdateHandler(object):
             pull.behind_master = status.behind_by
             pull.ahead_of_master = status.ahead_by
 
-    @check
-    def is_mergeable(self, pull, data):
-        """ TODO!
-        """
-        # pretty sure data['mergeable'] is null at the point of the
-        # hook being sent
+        # TODO: check mergeable status
 
 
 handle_github_update = GithubUpdateHandler()

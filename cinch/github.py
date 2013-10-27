@@ -141,7 +141,9 @@ class GithubUpdateHandler(object):
         pull.behind_master = status.behind_by
         pull.ahead_of_master = status.ahead_by
 
-        # TODO: check mergeable status
+        # TODO: check mergeable status ... may not be possible with data sent
+        #       in the github notifcation so call may need to be done
+        #       subsequently
 
 
 handle_github_update = GithubUpdateHandler()

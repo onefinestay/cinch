@@ -1,14 +1,12 @@
 import inspect
 
-CHECK_REGISTRY_FLAG = '_check_registry_flag'
+_check_registry = []
 
 
 def check(method):
-    setattr(method, CHECK_REGISTRY_FLAG, True)
+    type_checks = _check_registry.append(method)
     return method
 
 
 def get_checks(obj):
-    for _, attr in inspect.getmembers(obj, inspect.ismethod):
-        if getattr(attr, CHECK_REGISTRY_FLAG, False):
-            yield attr
+    return _check_registry

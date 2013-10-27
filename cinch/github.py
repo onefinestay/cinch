@@ -162,3 +162,25 @@ def accept_github_update():
     handle_github_update(gh, data)
 
     return 'OK'
+
+
+## Checks
+
+@check
+def check_strictly_ahead(pull):
+    if pull.ahead_of_master > 0 and pull.behind_master == 0:
+        # pull request is ahead of master and up to date with the latest head
+        return True, 'Branch is ready for release'
+    elif pull.ahead_of_master > 0 and pull.behind_master > 0:
+        # pull request is ahead of master and up to date with the latest head
+        return False, 'Branch is not up to date with master'
+    else:
+        return False, 'Branch has been already merged'
+
+
+@check
+def check_mergeable(pull):
+    if pull.is_mergeable:
+        return True, 'Mergeable'
+    else:
+        return False, 'Not automatically mergeable'

@@ -8,5 +8,6 @@ def check(method):
     return method
 
 
-def get_checks(obj):
-    return _check_registry
+def run_checks(pull):
+    for check in _check_registry:
+        yield check(pull)

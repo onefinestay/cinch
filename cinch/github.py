@@ -106,8 +106,9 @@ class GithubUpdateHandler(object):
 
                 owner_data = repo_data['owner']
                 owner_name = owner_data.get('name')
-                owner_login = owner_data.get('login')
-                if owner_name is None and owner_login is None:
+                if owner_name is None:
+                    owner_name = owner_data.get('login')
+                if owner_name is None:
                     raise KeyError("Neither login nor name found for owner")
 
             except KeyError:

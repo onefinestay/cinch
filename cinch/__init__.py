@@ -3,6 +3,7 @@ import os
 from flask import Flask
 from flask.ext.admin import Admin
 from flask.ext.sqlalchemy import SQLAlchemy
+from raven.contrib.flask import Sentry
 
 
 GITHUB_CONF = {}
@@ -14,6 +15,8 @@ for key in GITHUB_KEYS:
 
 
 app = Flask(__name__)
+
+Sentry(app)  # dsn from env[SENTRY_DSN]
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/cinch'

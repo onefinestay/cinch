@@ -60,6 +60,7 @@ class PullRequest(db.Model):
     head_commit = db.Column(db.String(40), db.ForeignKey('commits.sha'),
                             nullable=False)
     owner = db.Column(db.Text, nullable=False)
+    title = db.Column(db.Text, nullable=False)
     ahead_of_master = db.Column(db.Integer, nullable=True)
     behind_master = db.Column(db.Integer, nullable=True)
     is_mergable = db.Column(db.Boolean, nullable=True)

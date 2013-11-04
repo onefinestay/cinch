@@ -102,12 +102,19 @@ class GithubUpdateHandler(object):
         if self._repo is None:
             repo_data = self.data['repository']
             try:
-                owner_name = repo_data['owner']['login']
                 repo_name = repo_data['name']
+
+                owner_data = repo_data['owner']
+                owner_name = owner_data.get('name')
+                if owner_name is None:
+                    owner_name = owner_data.get('login')
+                if owner_name is None:
+                    raise KeyError("Neither login nor name found for owner")
+
             except KeyError:
                 logger.error(
                     'Unable to parse data. Malformed request:\n'
-                    '{}'.format(repo_data.data))
+                    '{}'.format(repo_data))
                 return
 
             repo_id = '{}/{}'.format(owner_name, repo_name)

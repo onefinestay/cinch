@@ -55,9 +55,11 @@ def handle_data(data):
 
     job_name = data['name']
     build_number = build['number']
+    # TODO: formalise (one!) convention for key, and fix case issue
     shas = {
-        key[:-4].lower(): value
-        for key, value in build['parameters'].items() if key.endswith('_SHA')
+        key.rsplit('_', 1)[0].lower(): value
+        for key, value in build['parameters'].items()
+        if key.endswith('_SHA') or key.endswith('_REVISION')
     }
 
     status = build['status']

@@ -70,7 +70,7 @@ def test_auth():
     return 'you are special %s' % g.access_token
 
 
-@app.route('/api/jenkins/pull', methods=['POST'])
+@app.route('/api/jenkins/notifier', methods=['POST'])
 def accept_jenksins_update():
     """ View for jenkins web hooks to handle updates
     """

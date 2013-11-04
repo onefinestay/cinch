@@ -78,7 +78,7 @@
             </a>
         </div>
         <div class="panel-body">
-            <p class="pr_description">Fixes all the bugs.</p>
+            <p class="pr_description">{{ pull.title }}</p>
             <span class="pr_owner">{{ pull.owner }}</span><span class="pr_age"> opened 15 days ago</span><br />
             <a class="sha_hash" href="https://github.com/organization/{{ pull.project.name }}/commit/{{ pull.head_commit }}">
                 <label>SHA:</label> {{ pull.head_commit[:9] }}

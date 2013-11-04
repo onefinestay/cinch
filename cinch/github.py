@@ -41,6 +41,8 @@ class GithubUpdateHandler(object):
         head_sha = pull_request_data['head']['sha']
         commit = get_or_create_commit(head_sha, project)
 
+        title = pull_request_data.get('title', '')
+
         pull = models.PullRequest.query.get((pr_number, project.id))
         if pull is None:
             # we need to initialise the pull request as it's the
@@ -49,6 +51,7 @@ class GithubUpdateHandler(object):
                 number=pr_number,
                 project_id=project.id,
                 owner=pull_request_data['user']['login'],
+                title=title,
             )
             models.db.session.add(pull)
 

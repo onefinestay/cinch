@@ -10,7 +10,7 @@ ch = logging.StreamHandler()
 logger.addHandler(ch)
 
 
-def handle_data(data):
+def record_job_status(data):
     """ Creates a Build from POST data
 
         data looks a little like this....
@@ -34,18 +34,12 @@ def handle_data(data):
             "phase": "FINISHED",
             "status": "SUCCESS",
             "url": "job/CInch/3/",
-            "parameters": {
-              "CINCH_SHA": "master"
-            }
           }
         }
 
     """
     data = json.loads(data)
     build = data['build']
-
-    if 'parameters' not in build:
-        raise Exception('This is not a parametarized build')
 
     if 'status' not in build:
         name = data['name']
@@ -55,16 +49,10 @@ def handle_data(data):
 
     job_name = data['name']
     build_number = build['number']
-    # TODO: formalise (one!) convention for key, and fix case issue
-    shas = {
-        key.rsplit('_', 1)[0].lower(): value
-        for key, value in build['parameters'].items()
-        if key.endswith('_SHA') or key.endswith('_REVISION')
-    }
 
     status = build['status']
     success = True if status == 'SUCCESS' else False
 
-    record_job_result(job_name, build_number, shas, success, status)
+    record_job_result(job_name, build_number, success, status)
 
     logger.info('created Build')

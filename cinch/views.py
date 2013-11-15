@@ -3,8 +3,8 @@ import logging
 
 from cinch import app, db
 from cinch.auth.decorators import requires_auth
-from cinch.controllers import get_pull_request_status
-from cinch.jenkins import handle_data
+from cinch.controllers import get_pull_request_status, record_job_sha
+from cinch.jenkins import record_job_status
 from cinch.models import PullRequest, Project
 from cinch.admin import AdminView
 
@@ -78,7 +78,37 @@ def accept_jenksins_update():
 
     data = request.get_data()
     try:
-        handle_data(data)
+        record_job_status(data)
+    except Exception, e:
+        logger.error(str(e), exc_info=True)
+        raise
+
+    return 'OK', 200
+
+
+
+@app.route('/api/jenkins/project_sha', methods=['POST'])
+def accept_jenkins_project_sha():
+    """ View for manual jenkins request to post shas for projects
+    """
+    logger.debug('receiving jenkins shas')
+
+    # request.form is a MultiDict, we only need one item per key
+    # data = dict(request.form.iteritems())
+    # try:
+        # project_name = data.pop('project_name')
+        # build_number = data.pop('build_number')
+    # except KeyError:
+        # return 'error', 400
+    form = request.form
+    try:
+        record_job_sha(
+            form['job_name'],
+            form['build_number'],
+            form['project_name'],
+            form['sha'],
+        )
+
     except Exception, e:
         logger.error(str(e), exc_info=True)
         raise

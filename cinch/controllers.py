@@ -14,11 +14,6 @@ def record_job_result(job_name, build_number, success, status):
         Build.build_number == build_number,
     ).one()
 
-    build_shas = [commit.project.name for commit in build.commits]
-
-    # sanity check
-    assert set([p.name for p in job.projects]) == set(build_shas)
-
     build.success = success
     build.status = status
 

@@ -2,7 +2,8 @@ from flask.ext.admin.contrib.sqla import ModelView
 
 from cinch import admin, db
 from cinch.auth.decorators import is_authenticated
-from cinch.models import Project, Job
+from cinch.models import Project
+from cinch.jenkins.models import Job
 
 
 class AdminView(ModelView):

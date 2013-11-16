@@ -1,13 +1,13 @@
 import pytest
 
-from cinch.models import Project, JobType, Job, Commit
-from cinch.controllers import (
+from cinch.models import Project, Commit
+from cinch.jenkins.models import JobType, Job
+from cinch.jenkins.controllers import (
     get_jobs, record_job_result, record_job_sha, get_successful_builds,
-    test_check as _test_check,  # avoid pytest collection)
-)
+    build_check)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def fixtures(session):
     """
     Dependency Graph:
@@ -211,17 +211,17 @@ def test_unit_test_check(fixtures):
     record_job_sha('library_unit', 1, 'library', library_master)
     record_job_result('library_unit', 1, True, "passed")
 
-    assert _test_check("library", library_master, "unit")
-    assert not _test_check("library", "some_other_sha", "unit")
-    assert not _test_check("mobile", library_master, "unit")
+    assert build_check("library", library_master, "unit")
+    assert not build_check("library", "some_other_sha", "unit")
+    assert not build_check("mobile", library_master, "unit")
 
     # mobile@sha1 passes unit tests
     record_job_sha('mobile_unit', 1, 'mobile', 'sha1')
     record_job_result('mobile_unit', 1, True, "passed")
 
-    assert _test_check("mobile", "sha1", "unit")
-    assert not _test_check("mobile", "some_other_sha", "unit")
-    assert not _test_check("mobile", library_master, "unit")
+    assert build_check("mobile", "sha1", "unit")
+    assert not build_check("mobile", "some_other_sha", "unit")
+    assert not build_check("mobile", library_master, "unit")
 
 
 def record_job_shas(job_name, build_number, shas):
@@ -251,7 +251,7 @@ def test_integration_test_check(session, fixtures):
     record_job_result('small_app_integration', 1, True, "passed")
 
     # library integration not yet satisfied
-    assert not _test_check('library', lib_sha, "integration")
+    assert not build_check('library', lib_sha, "integration")
 
     # large_app@sha2 integration passes against library@lib_sha
     shas = {
@@ -262,7 +262,7 @@ def test_integration_test_check(session, fixtures):
     record_job_result('large_app_integration', 1, True, "passed")
 
     # library integration not yet satisfied
-    assert not _test_check('library', lib_sha, "integration")
+    assert not build_check('library', lib_sha, "integration")
 
     # mobile@sha3 integration FAILS against library@lib_sha and large_app@sha2
     shas = {
@@ -274,7 +274,7 @@ def test_integration_test_check(session, fixtures):
     record_job_result('mobile_integration', 1, False, "aborted")
 
     # library integration not yet satisfied
-    assert not _test_check('library', lib_sha, "integration")
+    assert not build_check('library', lib_sha, "integration")
 
     # mobile@sha3 integration PASSES against library@lib_sha,
     # but  against large_app@sha4
@@ -287,7 +287,7 @@ def test_integration_test_check(session, fixtures):
     record_job_result('mobile_integration', 2, True, "passed")
 
     # library integration not yet satisfied
-    assert not _test_check('library', lib_sha, "integration")
+    assert not build_check('library', lib_sha, "integration")
 
     # mobile@sha3 integration PASSES against library@lib_sha AND large_app@sha2
     shas = {
@@ -299,4 +299,4 @@ def test_integration_test_check(session, fixtures):
     record_job_result('mobile_integration', 3, True, "passed")
 
     # library integration finally satisfied
-    assert _test_check('library', lib_sha, "integration")
+    assert build_check('library', lib_sha, "integration")

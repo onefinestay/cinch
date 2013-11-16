@@ -1,22 +1,27 @@
+import os
+
 import pytest
-from flask.ext.sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 
-@pytest.fixture(scope="session")
-def clean_db(request):
+def pytest_addoption(parser):
+    parser.addoption("--db-uri", action="store")
+
+
+def pytest_configure(config):
+    db_uri = config.getoption('db_uri')
+    if db_uri:
+        os.environ['DB_URI'] = db_uri
+
+
+@pytest.fixture
+def session():
     # importing at the module level messes up coverage
     from cinch import db
 
     def drop_and_recreate_db():
+        db.session.remove()  # make sure we start with a new session
         db.drop_all()
         db.create_all()
 
     drop_and_recreate_db()
-
-
-@pytest.fixture(scope="session")
-def session(request, clean_db):
-    from cinch import db
     return db.session

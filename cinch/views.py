@@ -3,6 +3,7 @@ import logging
 
 from cinch import app, db
 from cinch.auth.decorators import requires_auth
+from cinch.check import run_checks
 from cinch.models import PullRequest, Project
 from cinch.admin import AdminView
 from cinch.jenkins.controllers import get_pull_request_status
@@ -46,20 +47,14 @@ def index():
     pulls = dbsession.query(PullRequest).all()
     projects = dbsession.query(Project).all()
     for pull in pulls:
-        unit_status = get_pull_request_status(pull, "unit")
-        integration_status = get_pull_request_status(pull, "integration")
-        pull.checks = [
-            {
-                "name": "unit tests",
-                "short_name": "UT",
-                "status": status_label(unit_status),
-            },
-            {
-                "name": "integration tests",
-                "short_name": "IT",
-                "status": status_label(integration_status),
-            },
-        ]
+        checks = []
+        for status, message in run_checks(pull):
+            checks.append({
+                'name': message,
+                'short_name': message,
+                'status': status_label(status)
+            })
+        pull.checks = checks
         pull.sync_label = sync_label(pull.ahead_of_master, pull.behind_master)
 
     return render_template(

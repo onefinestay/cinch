@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from cinch.check import check
 from cinch.models import db, Project, Commit
 from .models import Job, Build
 
@@ -123,3 +124,14 @@ def get_pull_request_status(pull_request, job_type):
     project = pull_request.project
     return build_check(project.name, pull_request.head_commit, job_type)
 
+
+@check
+def unit_check(pull_request):
+    status = get_pull_request_status(pull_request, 'unit')
+    return status, "Unit tests"
+
+
+@check
+def integration_check(pull_request):
+    status = get_pull_request_status(pull_request, 'integration')
+    return status, "Integration tests"

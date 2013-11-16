@@ -6,7 +6,7 @@ from flask import request
 from github import Github, UnknownObjectException
 
 from cinch import app, models
-from cinch.check import check, get_checks
+from cinch.check import check
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +57,7 @@ class GithubUpdateHandler(object):
 
         pull.head_commit = commit.sha
 
-        for check_method in get_checks(self):
-            check_method(pull, pull_request_data)
+
 
         models.db.session.commit()
 
@@ -129,8 +128,7 @@ class GithubUpdateHandler(object):
 
         return self._repo
 
-    @check
-    def up_to_date(self, pull, data):
+    def update_pull_data(self, pull, data):
         # update row with null values to stop parallel processes from
         # picking up stale state while we look stuff up from github
         pull.behind_master = None
@@ -145,23 +143,19 @@ class GithubUpdateHandler(object):
         head_sha = data['head']['sha']
 
         try:
-            status = self.repo.compare(project.master_sha, head_sha)
+            status = self.repo.compare(project.master_sha, pull.head_commit)
         except (UnknownObjectException, AssertionError):
             logger.warning(
-                'unable to perform up_to_date check between commits: '
+                'unable to update pull request when comparing commits: '
                 '{}, {}'.format(project.master_sha, head_sha))
             return
 
-        if pull:
-            pull.behind_master = status.behind_by
-            pull.ahead_of_master = status.ahead_by
+        pull.behind_master = status.behind_by
+        pull.ahead_of_master = status.ahead_by
 
-    @check
-    def is_mergeable(self, pull, data):
-        """ TODO!
-        """
-        # pretty sure data['mergeable'] is null at the point of the
-        # hook being sent
+        # TODO: check mergeable status ... may not be possible with data sent
+        #       in the github notifcation so call may need to be done
+        #       subsequently
 
 
 handle_github_update = GithubUpdateHandler()
@@ -180,3 +174,25 @@ def accept_github_update():
     handle_github_update(gh, data)
 
     return 'OK'
+
+
+## Checks
+
+@check
+def check_strictly_ahead(pull):
+    if pull.ahead_of_master > 0 and pull.behind_master == 0:
+        # pull request is ahead of master and up to date with the latest head
+        return True, 'Branch is ready for release'
+    elif pull.ahead_of_master > 0 and pull.behind_master > 0:
+        # pull request is ahead of master and up to date with the latest head
+        return False, 'Branch is not up to date with master'
+    else:
+        return False, 'Branch has been already merged'
+
+
+@check
+def check_mergeable(pull):
+    if pull.is_mergeable:
+        return True, 'Mergeable'
+    else:
+        return False, 'Not automatically mergeable'

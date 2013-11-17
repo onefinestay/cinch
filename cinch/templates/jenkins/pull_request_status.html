@@ -21,9 +21,14 @@
     </tr>
 
     {% for build in job.builds %}
+    {% if build.matches_pull_request(pull_request) %}
     <tr>
     <td>{{ build.id }}</td>
-    <td>{{ build.status }}</td>
+    <td>
+        <span class="badge badge-{% if build.status %}success{% else %}warning{% endif %}">
+        {{ build.status }}
+        </span>
+    </td>
         {% for project in job.ordered_projects() %}
             {% with %}
                 {% set commit = build.project_commits()[project.name] %}
@@ -32,15 +37,11 @@
                     project != pull_request.project and
                     project.master_sha != commit
                 %} (not master){% endif %}
-
-                {% if
-                    project == pull_request.project and
-                    commit != pull_request.head_commit
-                %} (not head){% endif %}
                 </td>
             {% endwith %}
         {% endfor %}
     </tr>
+    {% endif %}
     {% endfor %}
     </table>
 

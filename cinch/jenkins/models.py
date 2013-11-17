@@ -74,3 +74,6 @@ class Build(db.Model):
             commits[commit.project.name] = commit.sha
 
         return commits
+
+    def matches_pull_request(self, pull_request):
+        return (pull_request.head in self.commits)

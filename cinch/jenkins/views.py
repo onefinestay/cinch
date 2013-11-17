@@ -1,10 +1,13 @@
 from __future__ import absolute_import
-import logging
+from itertools import chain
 import json
+import logging
 
-from flask import Blueprint, request
+from flask import Blueprint, request, abort, render_template
 
-from .controllers import record_job_result, record_job_sha
+from cinch import db
+from cinch.models import PullRequest, Project
+from .controllers import record_job_result, record_job_sha, get_jobs
 
 
 logger = logging.getLogger(__name__)
@@ -91,3 +94,23 @@ def build_sha():
     )
 
     return 'OK', 200
+
+
+@jenkins.route('/pr/<project_name>/<pr_number>')
+def pull_request_status(project_name, pr_number):
+    pull_request = db.session.query(PullRequest).join(Project).filter(
+        PullRequest.number == pr_number,
+        Project.name == project_name).first()
+
+    if pull_request is None:
+        abort(404, "Unknown pull request")
+
+    unit_jobs = get_jobs(pull_request.project.name, 'unit')
+    integration_jobs = get_jobs(pull_request.project.name, 'integration')
+
+    jobs = chain(unit_jobs, integration_jobs)
+
+    return render_template('jenkins/pull_request_status.html',
+        pull_request=pull_request,
+        jobs=jobs,
+    )

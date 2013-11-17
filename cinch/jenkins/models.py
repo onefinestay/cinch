@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from cinch import db
 from cinch.models import STRING_LENGTH
 
@@ -34,6 +36,9 @@ class Job(db.Model):
     def __str__(self):
         return "{} {}".format(self.name, self.type_id)
 
+    def ordered_projects(self):
+        return sorted(list(self.projects), key=lambda p: p.name)
+
 
 build_commits = db.Table(
     'build_commits',
@@ -56,3 +61,16 @@ class Build(db.Model):
     job = db.relationship('Job', backref='builds')
     commits = db.relationship(
         'Commit', secondary=build_commits, backref='builds')
+
+    def __str__(self):
+        return "{}/{}".format(self.job.name, self.build_number)
+
+    def project_commits(self):
+        commits = OrderedDict()
+        for project in self.job.ordered_projects():
+            commits[project.name] = None
+
+        for commit in self.commits:
+            commits[commit.project.name] = commit.sha
+
+        return commits

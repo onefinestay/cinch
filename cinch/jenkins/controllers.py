@@ -65,12 +65,25 @@ def get_jobs(project_name, job_type):
 
 def get_successful_builds(project_name, job_type, branch_shas):
     """
-        branch_shas= {
-            library: my_branch,
-        }
-        # it should be possible to do this more efficiently with some
-        # well written sql
+        Find successful jobs, given a project name and optional branch
+        sha overrides for projects in the found jobs
+
+        Finds all jobs related to the given project, and looks through all
+        builds for that job, looking for builds that are
+            1. successful
+            2. match the head shas for the projects in that build (unless
+                overriden with branch_shas)
+
+        Arguments:
+            project_name
+            job_type (unit/integration)
+                branch_shas: dict {project_name: sha}
+        
+        Return:
+            A list of names of successful jobs
     """
+    # it should be possible to do this more efficiently with some
+    # well written sql
 
     # get all jobs relevant to this project and job type
     # (i.e. figure out the dependencies/impact)

@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<h1>
+{{ pull_request.project.name }} #{{ pull_request.number }}:
+{{ pull_request.title }}
+</h1>
+
+<h3>Head: {{ pull_request.head_commit }}</h3>
+
+{% for job in jobs %}
+<h2>Job: {{ job.name }} ({{job.job_type}})</h2>
+
+    <table border="1" cellspacing="1">
+    <tr>
+    <th>id</th>
+    <th>Status</th>
+    {% for project in job.ordered_projects() %}
+        <th>{{ project.name }}</th>
+    {% endfor %}
+    </tr>
+
+    {% for build in job.builds %}
+    {% if build.matches_pull_request(pull_request) %}
+    <tr>
+    <td>{{ build.id }}</td>
+    <td>
+        <span class="badge badge-{% if build.status %}success{% else %}warning{% endif %}">
+        {{ build.status }}
+        </span>
+    </td>
+        {% for project in job.ordered_projects() %}
+            {% with %}
+                {% set commit = build.project_commits()[project.name] %}
+                <td>{{ commit }}
+                {% if
+                    project != pull_request.project and
+                    project.master_sha != commit
+                %} (not master){% endif %}
+                </td>
+            {% endwith %}
+        {% endfor %}
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </table>
+
+
+{% endfor %}
+
+{% endblock %}

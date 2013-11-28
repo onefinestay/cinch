@@ -1,17 +1,21 @@
-from flask import g, request, render_template
+from flask import g, render_template
 import logging
 
 from cinch import app, db
 from cinch.auth.decorators import requires_auth
-from cinch.controllers import get_pull_request_status
-from cinch.jenkins import handle_data
+from cinch.check import run_checks
 from cinch.models import PullRequest, Project
 from cinch.admin import AdminView
+from cinch.jenkins.controllers import get_pull_request_status
+from cinch.jenkins.views import jenkins
 
 logger = logging.getLogger(__name__)
 
 
 AdminView  # pyflakes. just want the module imported
+
+
+app.register_blueprint(jenkins, url_prefix='/jenkins')
 
 
 def status_label(status):
@@ -43,20 +47,14 @@ def index():
     pulls = dbsession.query(PullRequest).all()
     projects = dbsession.query(Project).all()
     for pull in pulls:
-        unit_status = get_pull_request_status(pull, "unit")
-        integration_status = get_pull_request_status(pull, "integration")
-        pull.checks = [
-            {
-                "name": "unit tests",
-                "short_name": "UT",
-                "status": status_label(unit_status),
-            },
-            {
-                "name": "integration tests",
-                "short_name": "IT",
-                "status": status_label(integration_status),
-            },
-        ]
+        checks = []
+        for status, message in run_checks(pull):
+            checks.append({
+                'name': message,
+                'short_name': message,
+                'status': status_label(status)
+            })
+        pull.checks = checks
         pull.sync_label = sync_label(pull.ahead_of_master, pull.behind_master)
 
     return render_template(
@@ -70,17 +68,3 @@ def test_auth():
     return 'you are special %s' % g.access_token
 
 
-@app.route('/api/jenkins/notifier', methods=['POST'])
-def accept_jenksins_update():
-    """ View for jenkins web hooks to handle updates
-    """
-    logger.debug('receiving jenkins notification')
-
-    data = request.get_data()
-    try:
-        handle_data(data)
-    except Exception, e:
-        logger.error(str(e), exc_info=True)
-        raise
-
-    return 'OK', 200

@@ -6,26 +6,30 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from raven.contrib.flask import Sentry
 
 
-GITHUB_CONF = {}
-GITHUB_KEYS = [
-    'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_CALLBACK_URL',
-]
-for key in GITHUB_KEYS:
-    GITHUB_CONF[key] = os.environ[key]
+DEFAULT_DB_URI = 'sqlite://'
 
 
 app = Flask(__name__)
 
-Sentry(app)  # dsn from env[SENTRY_DSN]
 
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/cinch'
-for key, value in GITHUB_CONF.items():
-    app.config[key] = value
+if 'SENTRY_DSN' in os.environ:
+    Sentry(app)  # grabs config from env automatically
+
+
+db_uri = os.environ.get('DB_URI', DEFAULT_DB_URI)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+
+
+github_keys = [
+    'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_CALLBACK_URL',
+]
+for key in github_keys:
+    app.config[key] = os.environ[key]
+
 app.secret_key = '***REMOVED***'
 
-db = SQLAlchemy(app)
 
+db = SQLAlchemy(app)
 admin = Admin(app)
 
 import cinch.views

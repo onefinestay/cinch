@@ -12,24 +12,21 @@ DEFAULT_DB_URI = 'sqlite://'
 app = Flask(__name__)
 
 
-if 'SENTRY_DSN' in os.environ:
-    Sentry(app)  # grabs config from env automatically
+for key, value in os.environ.items():
+    if not key.startswith('CINCH_'):
+        continue
+
+    config_key = key.replace('CINCH_', '', 1)
+    app.config[config_key] = value
+
+app.secret_key = app.config['SECRET_KEY']
 
 
-db_uri = os.environ.get('DB_URI', DEFAULT_DB_URI)
+if 'SENTRY_DSN' in app.config:
+    Sentry(app, dsn=app.config['SENTRY_DSN'])
+
+db_uri = app.config.get('DB_URI', DEFAULT_DB_URI)
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-
-
-github_keys = [
-    'GITHUB_CLIENT_ID',
-    'GITHUB_CLIENT_SECRET',
-    'GITHUB_CALLBACK_URL',
-    'GITHUB_TOKEN',
-]
-for key in github_keys:
-    app.config[key] = os.environ[key]
-
-app.secret_key = os.environ['SECRET_KEY']
 
 
 db = SQLAlchemy(app)

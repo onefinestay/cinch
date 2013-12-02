@@ -6,9 +6,9 @@ integration tool designed to report the releasable status of
 individual branches (pull requests) on public or private GitHub
 projects.
 
-.. note:: This project is very much a work in progress while we
-          develop our release process towards Continuous Integration
-          and Delivery.
+Note:
+    This project is very much a work in progress while we develop our
+    release process towards Continuous Integration and Delivery.
 
 Cinch is built to support configuring different success criteria for
 different projects from a number of different sources (eg.
@@ -37,9 +37,9 @@ From within the cinch project directory::
     $ source setup_env.sh
 
 Note:
-    Any environment variables prefixed with ``CINCH_`` will
-    have the prefix stripped and will be added to the app
-    configuration for access by plugins.
+    Any environment variables prefixed with ``CINCH_`` will have the
+    prefix stripped and will be added to the app configuration for
+    access by plugins.
 
 
 Then to run the application::

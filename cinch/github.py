@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 MASTER_REF = 'refs/heads/master'
 
-GITHUB_TOKEN = "***REMOVED***"
-
 
 def get_or_create_commit(sha, project):
     commit = models.Commit.query.get(sha)
@@ -167,7 +165,8 @@ def accept_github_update():
     """
     # TODO: verify request is from github
 
-    gh = Github(GITHUB_TOKEN)
+    github_token = app.config.get('GITHUB_TOKEN')
+    gh = Github(github_token)
     data = request.form['payload']
     data = json.loads(data)
 

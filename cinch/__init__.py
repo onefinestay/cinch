@@ -21,7 +21,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 
 
 github_keys = [
-    'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_CALLBACK_URL',
+    'GITHUB_CLIENT_ID',
+    'GITHUB_CLIENT_SECRET',
+    'GITHUB_CALLBACK_URL',
+    'GITHUB_TOKEN',
 ]
 for key in github_keys:
     app.config[key] = os.environ[key]

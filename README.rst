@@ -36,9 +36,10 @@ From within the cinch project directory::
     $ vim setup_env.sh  # Fill in each setting according to the instructions
     $ source setup_env.sh
 
-.. note:: Any environment variables prefixed with ``CINCH_`` will
-          have the prefix stripped and will be added to the app
-          configuration for access by plugins.
+Note:
+    Any environment variables prefixed with ``CINCH_`` will
+    have the prefix stripped and will be added to the app
+    configuration for access by plugins.
 
 
 Then to run the application::

@@ -20,3 +20,7 @@ export CINCH_SENTRY_DSN=
 
 # A sqlalchemy parseable database identifier
 export CINCH_DB_URI=
+
+# A comma separated list of github usernames allowed to administer
+# this cinch instance
+export CINCH_ADMIN_USERS=

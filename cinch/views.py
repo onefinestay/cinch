@@ -6,7 +6,6 @@ from cinch.auth.decorators import requires_auth
 from cinch.check import run_checks
 from cinch.models import PullRequest, Project
 from cinch.admin import AdminView
-from cinch.jenkins.controllers import get_pull_request_status
 from cinch.jenkins.views import jenkins
 
 logger = logging.getLogger(__name__)
@@ -17,12 +16,6 @@ AdminView  # pyflakes. just want the module imported
 
 app.register_blueprint(jenkins, url_prefix='/jenkins')
 
-
-def status_label(status):
-    if status:
-        return "success"
-    else:
-        return "warning"
 
 def sync_label(ahead, behind):
     """ Changes the color of the label in behind and ahead of master
@@ -47,14 +40,7 @@ def index():
     pulls = dbsession.query(PullRequest).all()
     projects = dbsession.query(Project).all()
     for pull in pulls:
-        checks = []
-        for status, message in run_checks(pull):
-            checks.append({
-                'name': message,
-                'short_name': message,
-                'status': status_label(status)
-            })
-        pull.checks = checks
+        pull.checks = list(run_checks(pull))
         pull.sync_label = sync_label(pull.ahead_of_master, pull.behind_master)
 
     return render_template(
@@ -68,3 +54,11 @@ def test_auth():
     return 'you are special %s' % g.access_token
 
 
+# TODO: move
+@app.template_filter('status_label')
+def status_label_filter(value):
+    status_map = {
+        True: 'success',
+        False: 'warning',
+    }
+    return status_map.get(value, '')

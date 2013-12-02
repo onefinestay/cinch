@@ -30,7 +30,7 @@ def build_status():
         name = data['name']
         phase = build['phase']
         logger.info('build {} {}'.format(name, phase))
-        return
+        return 'OK', 200
 
     job_name = data['name']
     build_number = build['number']

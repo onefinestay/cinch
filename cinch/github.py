@@ -6,7 +6,7 @@ from flask import request
 from github import Github, UnknownObjectException
 
 from cinch import app, models
-from cinch.check import check
+from cinch.check import check, CheckStatus
 
 logger = logging.getLogger(__name__)
 
@@ -181,17 +181,17 @@ def accept_github_update():
 def check_strictly_ahead(pull):
     if pull.ahead_of_master > 0 and pull.behind_master == 0:
         # pull request is ahead of master and up to date with the latest head
-        return True, 'Branch is ready for release'
+        return CheckStatus(label='Branch is up to date', status=True)
     elif pull.ahead_of_master > 0 and pull.behind_master > 0:
         # pull request is ahead of master and up to date with the latest head
-        return False, 'Branch is not up to date with master'
+        return CheckStatus(label='Branch is not up to date with master', status=False)
     else:
-        return False, 'Branch has been already merged'
+        return CheckStatus(label='Branch has been already merged', status=False)
 
 
 @check
 def check_mergeable(pull):
     if pull.is_mergeable:
-        return True, 'Mergeable'
+        return CheckStatus(label='Mergeable', status=True)
     else:
-        return False, 'Not automatically mergeable'
+        return CheckStatus(label='Not automatically mergeable', status=False)

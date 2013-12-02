@@ -13,24 +13,11 @@ job_projects = db.Table(
 )
 
 
-class JobType(db.Model):
-    __tablename__ = "job_types"
-
-    name = db.Column(db.String(STRING_LENGTH), primary_key=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Job(db.Model):
     __tablename__ = "jobs"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
-    type_id = db.Column(db.String(STRING_LENGTH),
-                        db.ForeignKey('job_types.name'), nullable=False)
-
-    job_type = db.relationship('JobType')
     projects = db.relationship('Project', secondary=job_projects)
 
     def __str__(self):

@@ -45,4 +45,15 @@ Note:
 Then to run the application::
 
     $ python runserver.py
+    * Running on http://0.0.0.0:5000/
+    * Restarting with reloader
 
+The cinch dashboard will then be accessible on `<http://localhost:5000/>`_
+which shows the currently active Pull Requests for configured projects.
+
+
+Project and Job configuration
+-----------------------------
+
+Projects and Jobs can be configured through the admin interface at
+`<http://localhost:5000/admin/>`_

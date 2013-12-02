@@ -2,7 +2,13 @@ _check_registry = []
 
 
 class CheckStatus(object):
-    """
+    """Wrapper for the result of checks
+
+    Arguments:
+        label: the label for the main dashboard
+        status: (bool) success status
+        verbose_name: more information about status (e.g. reason)
+        url: url to page with more info around status (e.g. failed builds)
     """
     def __init__(self, label='', status=None, verbose_name='', url=None):
         self.label = label

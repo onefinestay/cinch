@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import json
 import logging
-from flask import request
+from flask import abort, request
 from github import Github, UnknownObjectException
 
 from cinch import app, models
@@ -54,8 +54,6 @@ class GithubUpdateHandler(object):
             models.db.session.add(pull)
 
         pull.head_commit = commit.sha
-
-
 
         models.db.session.commit()
 
@@ -163,7 +161,9 @@ handle_github_update = GithubUpdateHandler()
 def accept_github_update():
     """ View for github web hooks to handle updates
     """
-    # TODO: verify request is from github
+    update_secret = app.config.get('GITHUB_UPDATE_SECRET')
+    if update_secret and request.args.get('secret') != update_secret:
+        abort(401)
 
     github_token = app.config.get('GITHUB_TOKEN')
     gh = Github(github_token)

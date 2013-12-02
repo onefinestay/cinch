@@ -20,3 +20,7 @@ export CINCH_SENTRY_DSN=
 
 # A sqlalchemy parseable database identifier
 export CINCH_DB_URI=
+
+# For authenticating updates sent from github.
+# This must be included in the callback url under the param `secret`
+export CINCH_GITHUB_UPDATE_SECRET=

@@ -29,7 +29,7 @@ github_keys = [
 for key in github_keys:
     app.config[key] = os.environ[key]
 
-app.secret_key = '***REMOVED***'
+app.secret_key = os.environ['SECRET_KEY']
 
 
 db = SQLAlchemy(app)

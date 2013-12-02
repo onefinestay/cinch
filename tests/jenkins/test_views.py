@@ -4,7 +4,7 @@ import pytest
 
 from cinch import app, db
 from cinch.models import Project
-from cinch.jenkins.models import Job, JobType
+from cinch.jenkins.models import Job
 from cinch.jenkins.controllers import build_check
 
 
@@ -17,11 +17,8 @@ def fixtures(session):
     session.add(library)
     session.add(application)
 
-    integration = JobType(name="integration")
-
     app_integration = Job(
         name="app_integration",
-        job_type=integration,
         projects=[application, library],
     )
 
@@ -96,4 +93,4 @@ def test_build_with_shas(fixtures):
 
     db.session.commit()
 
-    assert build_check('application', 'sha1', 'integration')
+    assert build_check('application', 'sha1')

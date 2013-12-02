@@ -1,10 +1,18 @@
-import inspect
-
 _check_registry = []
 
 
+class CheckStatus(object):
+    """
+    """
+    def __init__(self, label='', status=None, verbose_name='', url=None):
+        self.label = label
+        self.status = status
+        self.verbose_name = verbose_name or label
+        self.url = url or ''
+
+
 def check(method):
-    type_checks = _check_registry.append(method)
+    _check_registry.append(method)
     return method
 
 

@@ -1,34 +1,34 @@
     .container {
         margin: 20px auto;
     }
-    
+
     .pr-hidden {
         display: none;
     }
-    
+
     #ready_pulls {
         width: 100%;
     }
-    
+
     #ready_pulls tr.ready_pull {
         border-top: 1px solid #ccc;
         margin: 2px 0;
     }
-    
+
     #ready_pulls tr.ready_pull td {
         padding: 7px 0;
     }
-    
+
     .check_statuses {
         margin: 10px 0;
         height: 40px;
     }
-    
+
     .panel-heading {
         font-weight: 800;
         font-size: 1.2em;
     }
-    
+
     .sha_hash,
     .pr_owner,
     .pr_age {
@@ -37,46 +37,50 @@
     .sha_hash label {
         font-weight: 800;
     }
-    
+
     .pr_description {
         font-size: 1.2em;
         width: 240px;
         overflow: hidden;
     }
-    
+
     .project_selection {
         font-size: 0.7em;
         padding-right: 10px;
     }
-    
+
     .filter-on {
         background: #EBEBEB;
     }
-    
+
     /* bootstrap overrides */
-    
+
     .pr_heading {
         font-size: 1em;
     }
-    
+
     .badge-success {
         background-color: #5CB85C;
     }
-    
+
     .badge-warning {
         background-color: #F0AD4E;
     }
-    
+
     .badge-error {
         background-color: #D9534F;
     }
-    
+
     .panel-headed {
         padding-left: 0px;
         padding-right: 0px;
     }
-    
+
     .col-md-3 {
         width: 23%;
         margin: 1%;
+    }
+
+    .status_table td, .status_table th {
+        padding: 5px;
     }

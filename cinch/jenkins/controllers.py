@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
-from cinch.check import check
+from flask import url_for
+
+from cinch.check import check, CheckStatus
 from cinch.models import db, Project, Commit
 from .models import Job, Build
 
@@ -56,14 +58,14 @@ def record_job_result(job_name, build_number, success, status):
     db.session.commit()
 
 
-def get_jobs(project_name, job_type):
+def get_jobs(project_name):
 
     return db.session.query(Job).join(Job.projects).filter(
-        Project.name == project_name,
-        Job.type_id == job_type)
+            Project.name == project_name,
+        )
 
 
-def get_successful_builds(project_name, job_type, branch_shas):
+def get_successful_builds(project_name, branch_shas):
     """
         Find successful jobs, given a project name and optional branch
         sha overrides for projects in the found jobs
@@ -76,9 +78,8 @@ def get_successful_builds(project_name, job_type, branch_shas):
 
         Arguments:
             project_name
-            job_type (unit/integration)
                 branch_shas: dict {project_name: sha}
-        
+
         Return:
             A list of names of successful jobs
     """
@@ -87,7 +88,7 @@ def get_successful_builds(project_name, job_type, branch_shas):
 
     # get all jobs relevant to this project and job type
     # (i.e. figure out the dependencies/impact)
-    jobs = get_jobs(project_name, job_type)
+    jobs = get_jobs(project_name)
 
     jobs_with_successful_builds = []
 
@@ -122,29 +123,28 @@ def get_successful_builds(project_name, job_type, branch_shas):
     return jobs_with_successful_builds
 
 
-def build_check(project_name, project_sha, job_type):
-    job_names = [job.name for job in get_jobs(project_name, job_type)]
+def build_check(project_name, project_sha):
+    job_names = [job.name for job in get_jobs(project_name)]
 
     shas = {
         project_name: project_sha
     }
-    successful_jobs = get_successful_builds(project_name, job_type, shas)
+    successful_jobs = get_successful_builds(project_name, shas)
 
     return len(set(job_names) - set(successful_jobs)) == 0
 
 
-def get_pull_request_status(pull_request, job_type):
+@check
+def jenkins_check(pull_request):
     project = pull_request.project
-    return build_check(project.name, pull_request.head_commit, job_type)
-
-
-@check
-def unit_check(pull_request):
-    status = get_pull_request_status(pull_request, 'unit')
-    return status, "Unit tests"
-
-
-@check
-def integration_check(pull_request):
-    status = get_pull_request_status(pull_request, 'integration')
-    return status, "Integration tests"
+    status = build_check(project.name, pull_request.head_commit)
+    url = url_for(
+        'jenkins.pull_request_status',
+        project_name=pull_request.project.name,
+        pr_number=pull_request.number,
+    )
+    return CheckStatus(
+        label="Jenkins",
+        status=status,
+        url=url,
+    )

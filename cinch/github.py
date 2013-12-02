@@ -4,6 +4,7 @@ import json
 import logging
 from flask import abort, request
 from github import Github, UnknownObjectException
+from werkzeug.security import safe_str_cmp
 
 from cinch import app, models
 from cinch.check import check, CheckStatus
@@ -162,7 +163,10 @@ def accept_github_update():
     """ View for github web hooks to handle updates
     """
     update_secret = app.config.get('GITHUB_UPDATE_SECRET')
-    if update_secret and request.args.get('secret') != update_secret:
+    if (
+        update_secret and
+        not safe_str_cmp(request.args.get('secret', ''), update_secret)
+    ):
         abort(401)
 
     github_token = app.config.get('GITHUB_TOKEN')

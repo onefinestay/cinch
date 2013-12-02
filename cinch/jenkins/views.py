@@ -23,35 +23,6 @@ def build_status():
     logger.debug('receiving jenkins notification')
 
     data_str = request.get_data()
-
-
-    """ Creates a Build from POST data
-
-        data looks a little like this....
-        {
-          "name": "CInch",
-          "url": "job/CInch/",
-          "build": {
-            "full_url": "http://***REMOVED***/job/CInch/2/",
-            "number": 2,
-            "phase": "STARTED",
-            "url": "job/CInch/2/"
-          }
-        }
-
-        {
-          "name": "CInch",
-          "url": "job/CInch/",
-          "build": {
-            "full_url": "http://***REMOVED***/job/CInch/3/",
-            "number": 3,
-            "phase": "FINISHED",
-            "status": "SUCCESS",
-            "url": "job/CInch/3/",
-          }
-        }
-
-    """
     data = json.loads(data_str)
     build = data['build']
 

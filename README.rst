@@ -57,3 +57,9 @@ Project and Job configuration
 
 Projects and Jobs can be configured through the admin interface at
 `<http://localhost:5000/admin/>`_
+
+
+License
+-------
+
+Apache 2.0. See LICENSE for details.

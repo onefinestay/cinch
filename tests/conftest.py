@@ -1,5 +1,6 @@
 import os
 
+from flask import Flask
 import pytest
 
 
@@ -25,3 +26,10 @@ def session():
 
     drop_and_recreate_db()
     return db.session
+
+
+@pytest.yield_fixture
+def app_context():
+    app = Flask(__name__)
+    with app.test_request_context():
+        yield

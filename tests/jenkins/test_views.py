@@ -61,7 +61,7 @@ def test_record_status(fixtures):
     assert response.status_code == 200
 
 
-def test_build_with_shas(fixtures):
+def test_build_with_shas(fixtures, app_context):
     client = app.test_client()
     data = {
         'job_name': 'app_integration',

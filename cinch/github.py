@@ -28,6 +28,30 @@ class GithubUpdateHandler(object):
         `data` dictionary describing the update.
     """
 
+    _repo = None
+
+    def __init__(self, gh, data):
+        self.gh = gh
+        self.data = data
+
+        if (
+            self.repo is None or
+            models.Project.query.filter_by(
+                repo_name=self.repo.name).count() == 0
+        ):
+            logger.warning(
+                'received webhook for unconfigured project:\n'
+                '{}'.format(data))
+            return
+
+        pull_request_data = data.get('pull_request')
+        if pull_request_data is not None:
+            self._handle_pull_request(pull_request_data)
+
+        if 'ref' in data and data['ref'] == MASTER_REF:
+            # this is an update to the master branch
+            self._handle_master_update()
+
     def _handle_pull_request(self, pull_request_data):
         """ handle update to pull request... perform checks
         """
@@ -55,8 +79,6 @@ class GithubUpdateHandler(object):
 
         pull.head_commit = commit.sha
 
-
-
         models.db.session.commit()
 
     def _handle_master_update(self):
@@ -74,30 +96,6 @@ class GithubUpdateHandler(object):
         # get all pulls related to that project and invalidate them
         for gh_pull in self.repo.get_pulls():
             self._handle_pull_request(gh_pull._rawData)
-
-    def __call__(self, gh, data):
-        self.gh = gh
-        self.data = data
-
-        if (
-            self.repo is None or
-            models.Project.query.filter_by(
-                repo_name=self.repo.name).count() == 0
-        ):
-            logger.warning(
-                'received webhook for unconfigured project:\n'
-                '{}'.format(data))
-            return
-
-        pull_request_data = data.get('pull_request')
-        if pull_request_data is not None:
-            self._handle_pull_request(pull_request_data)
-
-        if 'ref' in data and data['ref'] == MASTER_REF:
-            # this is an update to the master branch
-            self._handle_master_update()
-
-    _repo = None
 
     @property
     def repo(self):
@@ -158,9 +156,6 @@ class GithubUpdateHandler(object):
         #       subsequently
 
 
-handle_github_update = GithubUpdateHandler()
-
-
 @app.route('/api/github/update', methods=['POST'])
 def accept_github_update():
     """ View for github web hooks to handle updates
@@ -172,7 +167,7 @@ def accept_github_update():
     data = request.form['payload']
     data = json.loads(data)
 
-    handle_github_update(gh, data)
+    GithubUpdateHandler(gh, data)
 
     return 'OK'
 

@@ -63,7 +63,9 @@ class GithubUpdateHandler(object):
         project = models.Project.query.filter_by(
             repo_name=self.repo.name).one()
 
-        master_sha = self.data['head_commit']['sha']
+        # at this point we are processing an update on the master branch
+        # `after` is the head of the branch after this commit
+        master_sha = self.data['after']
 
         commit = get_or_create_commit(master_sha, project)
 

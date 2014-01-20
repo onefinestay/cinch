@@ -1,10 +1,42 @@
 from __future__ import absolute_import
 
-from flask import url_for
+from flask import url_for, g
 
 from cinch.check import check, CheckStatus
 from cinch.models import db, Project, Commit
 from .models import Job, Build
+
+
+def g_cache(func):
+    """ For performance, we cache the results of certain queries that are
+    repeated a large number of times (for the duration of the request only)
+    """
+    def wrapped(*args):
+        try:
+            cache = g._cache
+        except AttributeError:
+            cache = {}
+            setattr(g, '_cache', cache)
+
+        key = (func, tuple(args))
+        if key not in cache:
+            cache[key] = func(*args)
+        return cache[key]
+
+    return wrapped
+
+@g_cache
+def _get_job_names(project_name):
+    return [job.name for job in get_jobs(project_name)]
+
+@g_cache
+def _get_jobs(project_name):
+    from sqlalchemy.orm import subqueryload
+    jobs = get_jobs(project_name
+        ).options(subqueryload('projects')
+        ).options(subqueryload('builds').subqueryload(Build.commits)
+    )
+    return jobs.all()
 
 
 def get_or_create_build(job, build_number):
@@ -88,7 +120,7 @@ def get_successful_builds(project_name, branch_shas):
 
     # get all jobs relevant to this project and job type
     # (i.e. figure out the dependencies/impact)
-    jobs = get_jobs(project_name)
+    jobs = _get_jobs(project_name)
 
     jobs_with_successful_builds = []
 
@@ -124,7 +156,7 @@ def get_successful_builds(project_name, branch_shas):
 
 
 def build_check(project_name, project_sha):
-    job_names = [job.name for job in get_jobs(project_name)]
+    job_names = _get_job_names(project_name)
 
     shas = {
         project_name: project_sha

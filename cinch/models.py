@@ -30,6 +30,7 @@ class PullRequest(db.Model):
     ahead_of_master = db.Column(db.Integer, nullable=True)
     behind_master = db.Column(db.Integer, nullable=True)
     is_mergeable = db.Column(db.Boolean, nullable=True)
+    is_open = db.Column(db.Boolean, nullable=True)
 
     head = db.relationship('Commit')
     project = db.relationship('Project')

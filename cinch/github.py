@@ -79,6 +79,10 @@ class GithubUpdateHandler(object):
 
         pull.head_commit = commit.sha
 
+        state = pull_request_data.get('state')
+        if state is not None:
+            pull.is_open = (state == 'open')
+
         models.db.session.commit()
 
     def _handle_master_update(self):

@@ -1,10 +1,11 @@
 """Make bare clones of repos to use for faster (local) comparison operations"""
 
-# import re
-import subprocess
+import errno
 import logging
+import os
+import subprocess
 
-from flask import app
+from cinch import app
 
 
 GIT_ERROR = 128
@@ -34,9 +35,15 @@ class Repo(object):
         self.path = path
 
     @classmethod
-    def setup_repo(cls, name, url, repo_base_dir=None):
-        if repo_base_dir is None:
-            repo_base_dir = app.config.get('REPO_BASE_DIR')
+    def setup_repo(cls, name, url):
+        repo_base_dir = app.config.get('REPO_BASE_DIR')
+
+        try:
+            os.makedirs(repo_base_dir)
+        except OSError as ex:
+            if ex.errno != errno.EEXIST:
+                raise
+
         subprocess.check_output(
             [
                 'git',
@@ -47,8 +54,7 @@ class Repo(object):
             ],
             cwd=repo_base_dir,
         )
-        repo_dir = '{}/{}'.format(repo_base_dir, name)
-        repo = cls(repo_dir)
+        repo = cls.from_local_repo(name)
 
         for remote_name in ['pr_head', 'pr_merge']:
             spec = '+refs/pull/*/head:refs/remotes/{}/*'.format(remote_name)
@@ -59,6 +65,14 @@ class Repo(object):
                 spec
             )
         repo.fetch()
+        return repo
+
+    @classmethod
+    def from_local_repo(cls, name):
+        repo_base_dir = app.config.get('REPO_BASE_DIR')
+        repo_dir = '{}/{}'.format(repo_base_dir, name)
+
+        repo = cls(repo_dir)
         return repo
 
     def fetch(self):

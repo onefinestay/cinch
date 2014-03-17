@@ -121,7 +121,7 @@ def test_record_job_result(session, fixtures):
     assert session.query(Commit).get("sha2").project.name == "large_app"
 
 
-def test_get_successful_builds(session, fixtures):
+def test_get_successful_builds(session, fixtures, app_context):
     library_master = "lib-master-sha"
 
     # library@master passes unit tests
@@ -194,7 +194,7 @@ def record_job_shas(job_name, build_number, shas):
         record_job_sha(job_name, build_number, project_name, sha)
 
 
-def test_integration_test_check(session, fixtures):
+def test_integration_test_check(session, fixtures, app_context):
     lib_sha = "lib-proposed-sha"
 
     # library@proposed-sha passes unit tests

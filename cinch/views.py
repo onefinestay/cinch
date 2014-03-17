@@ -37,7 +37,8 @@ def sync_label(ahead, behind):
 @requires_auth
 def index():
     dbsession = db.session
-    pulls = dbsession.query(PullRequest).all()
+    pulls = dbsession.query(PullRequest).filter(
+        PullRequest.is_open == True).all()
     projects = dbsession.query(Project).all()
     for pull in pulls:
         pull.checks = list(run_checks(pull))

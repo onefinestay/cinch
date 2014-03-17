@@ -1,6 +1,5 @@
 import os
 
-from flask import Flask
 import pytest
 
 
@@ -12,6 +11,10 @@ def pytest_configure(config):
     db_uri = config.getoption('db_uri')
     if db_uri:
         os.environ['DB_URI'] = db_uri
+
+    # disable error catching for better traceback
+    from cinch import app
+    app.testing = True
 
 
 @pytest.fixture
@@ -30,6 +33,14 @@ def session():
 
 @pytest.yield_fixture
 def app_context():
-    app = Flask(__name__)
+    from cinch import app
     with app.test_request_context():
         yield
+
+
+@pytest.yield_fixture(autouse=True)
+def temp_config():
+    from cinch import app
+    original_config = app.config
+    yield
+    app.config = original_config

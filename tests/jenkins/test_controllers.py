@@ -3,8 +3,8 @@ import pytest
 from cinch.models import Project, Commit
 from cinch.jenkins.models import Job
 from cinch.jenkins.controllers import (
-    get_jobs, record_job_result, record_job_sha, get_successful_builds,
-    build_check)
+    get_jobs, record_job_result, record_job_sha, has_successful_builds,
+)
 
 
 @pytest.fixture
@@ -132,9 +132,7 @@ def test_get_successful_builds(session, fixtures, app_context):
     record_job_result('library_unit', 1, True, "passed")
 
     build_shas = shas
-    assert get_successful_builds('library', build_shas) == [
-        "library_unit"
-    ]
+    assert has_successful_builds(fixtures['library_unit'], build_shas)
 
     # small_app@sha1 integration passes against library@master
     shas = {
@@ -146,11 +144,7 @@ def test_get_successful_builds(session, fixtures, app_context):
     record_job_result('small_app_integration', 1, True, "passed")
 
     build_shas = shas
-    assert get_successful_builds('small_app', build_shas) == [
-        "small_app_integration"
-    ]
-    assert "small_app_integration" in get_successful_builds(
-        'library', build_shas)
+    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
 
     # large_app@sha2 integration passes against library@master
     shas = {
@@ -163,18 +157,14 @@ def test_get_successful_builds(session, fixtures, app_context):
 
     build_shas = shas
     # large_app@sha2 has passed integration against library@master
-    assert get_successful_builds('large_app', build_shas) == [
-        "large_app_integration"
-    ]
+    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
 
     build_shas['small_app'] = "sha1"
 
     # small_app@sha1 has passed integration against library@master
     # large_app@sha2 has passed integration against library@master
-    assert "large_app_integration" in get_successful_builds(
-        'library', build_shas)
-    assert "small_app_integration" in get_successful_builds(
-        'library', build_shas)
+    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
+    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
 
     # small_app master is at sha1
     small_app = session.query(Project).filter_by(name="small_app").one()
@@ -183,15 +173,22 @@ def test_get_successful_builds(session, fixtures, app_context):
 
     # so we can omit small_app for build_shas dict
     build_shas.pop('small_app')
-    assert "large_app_integration" in get_successful_builds(
-        'library', build_shas)
-    assert "small_app_integration" in get_successful_builds(
-        'library', build_shas)
+    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
+    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
 
 
 def record_job_shas(job_name, build_number, shas):
     for project_name, sha in shas.items():
         record_job_sha(job_name, build_number, project_name, sha)
+
+
+def build_check(session, project_name, sha):
+    project = session.query(Project).filter_by(name=project_name).one()
+    shas = {project_name: sha}
+    return all(
+        has_successful_builds(job, shas)
+        for job in get_jobs(project)
+    )
 
 
 def test_integration_test_check(session, fixtures, app_context):
@@ -221,7 +218,7 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('small_app_integration', 1, True, "passed")
 
     # library integration not yet satisfied
-    assert not build_check('library', lib_sha)
+    assert not build_check(session, 'library', lib_sha)
 
     # large_app@sha2 integration passes against library@lib_sha
     shas = {
@@ -232,7 +229,7 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('large_app_integration', 1, True, "passed")
 
     # library integration not yet satisfied
-    assert not build_check('library', lib_sha)
+    assert not build_check(session, 'library', lib_sha)
 
     # mobile@sha3 integration FAILS against library@lib_sha and large_app@sha2
     shas = {
@@ -244,7 +241,7 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('mobile_integration', 1, False, "aborted")
 
     # library integration not yet satisfied
-    assert not build_check('library', lib_sha)
+    assert not build_check(session, 'library', lib_sha)
 
     # mobile@sha3 integration PASSES against library@lib_sha,
     # but  against large_app@sha4
@@ -257,7 +254,7 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('mobile_integration', 2, True, "passed")
 
     # library integration not yet satisfied
-    assert not build_check('library', lib_sha)
+    assert not build_check(session, 'library', lib_sha)
 
     # mobile@sha3 integration PASSES against library@lib_sha AND large_app@sha2
     shas = {
@@ -269,4 +266,4 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('mobile_integration', 3, True, "passed")
 
     # library integration finally satisfied
-    assert build_check('library', lib_sha)
+    assert build_check(session, 'library', lib_sha)

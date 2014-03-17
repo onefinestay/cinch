@@ -97,13 +97,9 @@ def get_jobs(project_name):
         )
 
 
-def get_successful_builds(project_name, branch_shas):
+def has_successful_builds(job, branch_shas):
     """
-        Find successful jobs, given a project name and optional branch
-        sha overrides for projects in the found jobs
-
-        Finds all jobs related to the given project, and looks through all
-        builds for that job, looking for builds that are
+        For a given job and main project, look for builds that are
             1. successful
             2. match the head shas for the projects in that build (unless
                 overriden with branch_shas)
@@ -118,65 +114,70 @@ def get_successful_builds(project_name, branch_shas):
     # it should be possible to do this more efficiently with some
     # well written sql
 
-    # get all jobs relevant to this project and job type
-    # (i.e. figure out the dependencies/impact)
-    jobs = _get_jobs(project_name)
-
-    jobs_with_successful_builds = []
-
-    # for each of the relevant jobs, find any build that matches the required
-    # set of SHAs and also passed
-    for job in jobs:
-
-        # SHAs to match starts as the master_sha of the relevant projects
-        job_shas = {
-            project.name: project.master_sha
-            for project in job.projects
-        }
-        shas = job_shas.copy()
-        # but specific SHAs can be provided to test against
-        shas.update(branch_shas)
-
-        # iterate over all builds of this job. if one matches the exact set
-        # of SHAs we're matching for, consider it a success
-        for build in job.builds:
-            commits = {
-                commit.project.name: commit.sha
-                for commit in build.commits
-            }
-            job_shas = {
-                key: value for key, value in shas.items()
-                if key in job_shas
-            }
-            if commits == job_shas and build.success:
-                jobs_with_successful_builds.append(job.name)
-                break
-
-    return jobs_with_successful_builds
-
-
-def build_check(project_name, project_sha):
-    job_names = _get_job_names(project_name)
-
-    shas = {
-        project_name: project_sha
+    # SHAs to match starts as the master_sha of the relevant projects
+    job_shas = {
+        project.name: project.master_sha
+        for project in job.projects
     }
-    successful_jobs = get_successful_builds(project_name, shas)
 
-    return len(set(job_names) - set(successful_jobs)) == 0
+    shas = job_shas.copy()
+    # but specific SHAs can be provided to test against
+    shas.update(branch_shas)
+
+    # in case shas from unknown projects were provided, skip them
+    shas = {
+        key: value
+        for key, value in shas.items()
+        if key in job_shas
+    }
+
+    # iterate over all builds of this job. if one matches the exact set
+    # of SHAs we're matching for, consider it a success
+    for build in job.builds:
+        if not build.success:
+            continue
+
+        commits = {
+            commit.project.name: commit.sha
+            for commit in build.commits
+        }
+        if commits == shas:
+            return True
+
+    return False
 
 
 @check
 def jenkins_check(pull_request):
     project = pull_request.project
-    status = build_check(project.name, pull_request.head_commit)
+
+    # get all jobs relevant to this project and job type
+    # (i.e. figure out the dependencies/impact)
+    jobs = _get_jobs(project.name)
+
+    shas = {
+        project.name: pull_request.head_commit,
+    }
+    # todo: one url per job
     url = url_for(
         'jenkins.pull_request_status',
         project_name=pull_request.project.name,
         pr_number=pull_request.number,
     )
-    return CheckStatus(
-        label="Jenkins",
-        status=status,
-        url=url,
-    )
+
+    check_statuses = []
+
+    # for each of the relevant jobs, find any build that matches the required
+    # set of SHAs and also passed
+    for job in sorted(jobs, key=lambda j: j.name):
+        status = has_successful_builds(job, shas)
+        label = "Jenkins: {}".format(job.name)
+        check_statuses.append(
+            CheckStatus(
+                label=label,
+                status=status,
+                url=url,
+            )
+        )
+
+    return check_statuses

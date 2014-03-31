@@ -107,7 +107,5 @@ def test_build_with_shas(fixtures, app_context):
 
     db.session.commit()
 
-    # until we can figure out why url_for fails
-    with mock.patch('cinch.jenkins.controllers.url_for'):
-        statuses = [check.status for check in jenkins_check(pull_request)]
-        assert all(statuses)
+    statuses = [check.status for check in jenkins_check(pull_request)]
+    assert all(statuses)

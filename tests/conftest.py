@@ -30,6 +30,6 @@ def session():
 
 @pytest.yield_fixture
 def app_context():
-    app = Flask(__name__)
+    from cinch import app
     with app.test_request_context():
         yield

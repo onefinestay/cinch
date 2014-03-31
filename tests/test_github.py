@@ -5,12 +5,12 @@ from cinch import app
 
 
 @patch('cinch.github.GithubUpdateHandler')
-@pytest.mark.parametrize(('args', 'status_code'), [
-    ({}, 401),
-    ({'secret': 'incorrect secret'}, 401),
-    ({'secret': 'secret'}, 200),
+@pytest.mark.parametrize(('args', 'status_code', 'valid_update'), [
+    ({}, 401, False),
+    ({'secret': 'incorrect secret'}, 401, False),
+    ({'secret': 'secret'}, 200, True),
 ])
-def test_updates_require_secret(handler, args, status_code):
+def test_updates_require_secret(handler, args, status_code, valid_update):
     app.config['GITHUB_TOKEN'] = 'abc'
     app.config['GITHUB_UPDATE_SECRET'] = 'secret'
 
@@ -20,4 +20,4 @@ def test_updates_require_secret(handler, args, status_code):
         })
 
     assert res.status_code == status_code
-    assert handler.called == (status_code == 200)
+    assert handler.called == valid_update

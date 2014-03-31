@@ -41,6 +41,6 @@ def app_context():
 @pytest.yield_fixture(autouse=True)
 def temp_config():
     from cinch import app
-    original_config = app.config
+    original_config = app.config.copy()
     yield
     app.config = original_config

@@ -56,6 +56,13 @@ class Repo(object):
         )
         repo = cls.from_local_repo(name)
 
+        # bare clones don't get origin by default
+        add_custom_remote(
+            repo,
+            'origin',
+            url,
+            '+refs/heads/*:refs/remotes/origin/*',
+        )
         for remote_name in ['pr_head', 'pr_merge']:
             spec = '+refs/pull/*/head:refs/remotes/{}/*'.format(remote_name)
             add_custom_remote(

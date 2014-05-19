@@ -9,6 +9,8 @@ from cinch import app
 
 
 GIT_ERROR = 128
+GITHUB_URL_TEMPLATE = "git@github.com:{}/{}.git"
+
 _log = logging.getLogger(__name__)
 
 
@@ -35,14 +37,17 @@ class Repo(object):
         self.path = path
 
     @classmethod
-    def setup_repo(cls, name, url):
+    def setup_repo(cls, owner, name):
         repo_base_dir = app.config.get('REPO_BASE_DIR')
+        owner_base_dir = os.path.join(repo_base_dir, owner)
 
         try:
-            os.makedirs(repo_base_dir)
+            os.makedirs(owner_base_dir)
         except OSError as ex:
             if ex.errno != errno.EEXIST:
                 raise
+
+        url = GITHUB_URL_TEMPLATE.format(owner, name)
 
         subprocess.check_output(
             [
@@ -52,9 +57,9 @@ class Repo(object):
                 url,
                 name,
             ],
-            cwd=repo_base_dir,
+            cwd=owner_base_dir,
         )
-        repo = cls.from_local_repo(name)
+        repo = cls.from_local_repo(owner, name)
 
         # bare clones don't get origin by default
         add_custom_remote(
@@ -75,9 +80,9 @@ class Repo(object):
         return repo
 
     @classmethod
-    def from_local_repo(cls, name):
+    def from_local_repo(cls, owner, name):
         repo_base_dir = app.config.get('REPO_BASE_DIR')
-        repo_dir = '{}/{}'.format(repo_base_dir, name)
+        repo_dir = '{}/{}/{}'.format(repo_base_dir, owner, name)
 
         repo = cls(repo_dir)
         return repo

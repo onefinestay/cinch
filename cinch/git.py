@@ -98,7 +98,7 @@ class Repo(object):
         except subprocess.CalledProcessError as ex:
             _log.debug(ex.output)
             return None
-        return output
+        return output.strip()
 
     def compare(self, base, branch):
         """Count number of commits in branch that are not in base"""
@@ -108,7 +108,7 @@ class Repo(object):
         output = self.cmd(cmd)
         if output is None:
             return None
-        return int(output.strip())
+        return int(output)
 
     def compare_pr(self, pr):
         """Return tuple (behind, ahead) comparing pull request to master"""

@@ -7,6 +7,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app, models
 from cinch.check import check, CheckStatus
+from cinch.git import Repo, NotARepo
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class GithubHookParser(object):
         title = pr_info['title']
         head = pr_info['head']['sha']
         state = pr_info['state']
-        base_ref = ['base']['ref']
+        base_ref = pr_info['base']['ref']
 
         return PullRequestInfo(
             number=pr_number,
@@ -99,23 +100,49 @@ class GithubHookParser(object):
         )
 
 
+def get_project_from_repo_info(repo_info):
+    try:
+        return models.Project.query.filter_by(
+            owner=repo_info.owner,
+            name=repo_info.name,
+        ).one()
+    except NoResultFound:
+        return None
+
+
 @app.route('/api/github/update', methods=['POST'])
 def handle_github_webhok():
+    """We always return a 200 to keep github happy, but include info about
+    actions taken
+    """
     parser = GithubHookParser(request)
 
     if parser.is_ping():
         return "pong"
 
-    if parser.is_push() and not parser.is_master_push():
-        return "Ignoring: Non-master push"
+    repo_info = parser.get_repo_info()
+    project = get_project_from_repo_info(repo_info)
+    if project is None:
+        return "Ignoring: Unknown project"
 
-    if parser.is_pull_request():
-        repo_info = parser.get_repo_info()
+    if parser.is_push():
+        if not parser.is_master_push():
+            return "Ignoring: Non-master push"
+
+        for pr in project.pull_requests:
+            set_relative_states(pr)
+        models.db.session.commit()
+        return "Master push handled"
+
+    elif parser.is_pull_request():
         pr_info = parser.get_pull_request_info()
-        return handle_pull_request(repo_info, pr_info)
+        return handle_pull_request(project, repo_info, pr_info)
+
+    else:
+        return "Ignoring: unknown action"
 
 
-def handle_pull_request(repo_info, pr_info):
+def handle_pull_request(project, repo_info, pr_info):
     # TODO: handle pull requests across different repos (forks)
     # we currently assume same repo
 
@@ -123,15 +150,6 @@ def handle_pull_request(repo_info, pr_info):
         # TODO: track these with a separate check "is_against_master"?
         # if so, set_relative_states needs to get the base sha or similar
         return "Ignoring: Not against master"
-
-    try:
-        project = models.Project.query.filter_by(
-            repo_name=repo_info.name).one()
-    except NoResultFound:
-        return "Ignoring: Unknown project"
-
-    # TODO: determine ahead/behind/mergeable (also needed for master push,
-    # but for all open prs)
 
     commit = get_or_create_commit(pr_info.head, project)
     pr = models.PullRequest.query.get((pr_info.number, project.id))
@@ -148,14 +166,30 @@ def handle_pull_request(repo_info, pr_info):
         models.db.session.add(pr)
 
     pr.head_commit = commit.sha
+    set_relative_states(pr)
     models.db.session.commit()
     return "Pull request updated"
 
 
-def set_relative_states(pr):
+def set_relative_states(pr, commit=False):
     """Set values of states that are relative to the base branch"""
 
+    project = pr.project
+    git_repo = Repo.from_local_repo(project.owner, project.name)
+    try:
+        git_repo.fetch()
+    except NotARepo:
+        git_repo = Repo.setup_repo(project.owner, project.name)
+
     # we currently assume that the base is master
+    behind, ahead = git_repo.compare_pr(pr.number)
+    is_mergeable = git_repo.is_mergeable(pr.number)
+
+    pr.behind_master = behind
+    pr.ahead_of_master = ahead
+    pr.is_mergeable = is_mergeable
+    if commit:
+        models.db.session.commit()
 
 
 ## Checks

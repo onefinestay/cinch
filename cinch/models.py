@@ -38,7 +38,7 @@ class PullRequest(db.Model):
     is_open = db.Column(db.Boolean, nullable=True)
 
     head = db.relationship('Commit')
-    project = db.relationship('Project')
+    project = db.relationship('Project', backref='pull_requests')
 
 
 class Commit(db.Model):

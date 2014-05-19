@@ -84,20 +84,23 @@ class Repo(object):
 
     def fetch(self):
         try:
-            self.cmd(['fetch', '--all'])
+            self.cmd(['fetch', '--all'], bubble_errors=True)
         except subprocess.CalledProcessError as ex:
             if ex.returncode == GIT_ERROR:
                 raise NotARepo()
             raise
 
-    def cmd(self, cmd):
+    def cmd(self, cmd, bubble_errors=False):
         git_dir = '--git-dir={}'.format(self.path)
         git_cmd = ['git', git_dir] + cmd
         try:
             output = subprocess.check_output(git_cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as ex:
-            _log.debug(ex.output)
-            return None
+            if bubble_errors:
+                raise
+            else:
+                _log.debug(ex.output)
+                return None
         return output.strip()
 
     def compare(self, base, branch):

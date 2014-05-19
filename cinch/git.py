@@ -114,9 +114,23 @@ class Repo(object):
         """Return tuple (behind, ahead) comparing pull request to master"""
 
         branch = 'pr_head/{}'.format(pr)
-        base = 'master'
+        base = 'origin/master'
 
         behind = self.compare(branch, base)
         ahead = self.compare(base, branch)
 
         return (behind, ahead)
+
+    def is_mergeable(self, pr):
+        """Return True if the pull request can merge cleanly into master"""
+
+        branch = 'pr_head/{}'.format(pr)
+        base = 'origin/master'
+
+        merge_base = self.cmd(['merge-base', branch, base])
+        merge_result = self.cmd(['merge-tree', merge_base, branch, base])
+        conflict_marker = '+>>>>>>>'  # '+' first, since this is a diff
+        for line in merge_result.splitlines():
+            if line.startswith(conflict_marker):
+                return False
+        return True

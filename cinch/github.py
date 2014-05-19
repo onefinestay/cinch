@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 from collections import namedtuple
-import json
 import logging
 from flask import request
 from sqlalchemy.orm.exc import NoResultFound
@@ -48,8 +47,7 @@ class GithubHookParser(object):
             self.data = None
             return
 
-        data = request.form['payload']
-        self.data = json.loads(data)
+        self.data = request.json
 
     def get_repo_info(self):
         """Return RepoInfo namedtuple (owner, name)"""

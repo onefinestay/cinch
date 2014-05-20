@@ -150,7 +150,13 @@ def handle_push(repo_info):
         return Responses.UNKNOWN_PROJECT
 
     first = True
-    for pr in project.pull_requests:
+    PullRequest = models.PullRequest
+    pull_requests = models.db.session.query(
+        PullRequest).filter(
+            PullRequest.project == project,
+            PullRequest.is_open,
+        )
+    for pr in pull_requests:
         set_relative_states(pr, fetch=first)
         first = False
 

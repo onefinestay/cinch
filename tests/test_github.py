@@ -110,7 +110,8 @@ class TestPush(object):
 
     def test_unseen_repo(self, fake_repo, session, project, hook_post):
         sha1 = Commit(project=project, sha='1')
-        pr1 = PullRequest(project=project, head=sha1, owner='me', title='foo')
+        pr1 = PullRequest(
+            project=project, head=sha1, owner='me', title='foo', is_open=True)
         session.add(pr1)
         session.commit()
 
@@ -141,10 +142,15 @@ class TestPush(object):
     def test_master_with_open_prs(self, session, project, fake_repo, hook_post):
         sha1 = Commit(project=project, sha='1')
         sha2 = Commit(project=project, sha='2')
-        pr1 = PullRequest(project=project, head=sha1, owner='me', title='foo')
-        pr2 = PullRequest(project=project, head=sha2, owner='me', title='foo')
+        pr1 = PullRequest(
+            project=project, head=sha1, owner='me', title='foo', is_open=True)
+        pr2 = PullRequest(
+            project=project, head=sha2, owner='me', title='foo', is_open=True)
+        pr3 = PullRequest(
+            project=project, head=sha2, owner='me', title='foo', is_open=False)
         session.add(pr1)
         session.add(pr2)
+        session.add(pr3)
         session.commit()
 
         data = {

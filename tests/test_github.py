@@ -4,7 +4,6 @@ from mock import patch
 import pytest
 
 from cinch import app
-from cinch.git import NotARepo
 from cinch.github import Responses
 from cinch.models import Project, Commit, PullRequest
 
@@ -115,12 +114,12 @@ class TestPush(object):
         session.add(pr1)
         session.commit()
 
-        fetch = fake_repo.from_local_repo('mock_owner', 'mock_name').fetch
+        is_repo = fake_repo.from_local_repo('mock_owner', 'mock_name').is_repo
         setup_repo = fake_repo.setup_repo
         setup_repo('mock_owner', 'mock_name').compare_pr.return_value = (
             None, None)
 
-        fetch.side_effect = NotARepo
+        is_repo.return_value = False
 
         data = {
             'repository': {
@@ -161,12 +160,13 @@ class TestPush(object):
         assert res.status_code == 200
         assert res.data == Responses.MASTER_PUSH_OK
 
-        compare_pr = fake_repo.from_local_repo('owner', 'name').compare_pr
-        assert compare_pr.call_count == 2
-        args1, _ = compare_pr.call_args_list[0]
-        args2, _ = compare_pr.call_args_list[1]
+        repo = fake_repo.from_local_repo('owner', 'name')
+        assert repo.compare_pr.call_count == 2
+        args1, _ = repo.compare_pr.call_args_list[0]
+        args2, _ = repo.compare_pr.call_args_list[1]
         assert args1 == (1,)
         assert args2 == (2,)
+        assert repo.fetch.call_count == 1  # not once per pr
 
 
 class TestPullRequest(object):

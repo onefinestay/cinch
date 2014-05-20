@@ -87,13 +87,18 @@ class Repo(object):
         repo = cls(repo_dir)
         return repo
 
-    def fetch(self):
+    def is_repo(self):
         try:
-            self.cmd(['fetch', '--all'], bubble_errors=True)
+            self.cmd(['rev-parse'], bubble_errors=True)
         except subprocess.CalledProcessError as ex:
             if ex.returncode == GIT_ERROR:
-                raise NotARepo()
+                return False
             raise
+        else:
+            return True
+
+    def fetch(self):
+        self.cmd(['fetch', '--all'])
 
     def cmd(self, cmd, bubble_errors=False):
         git_dir = '--git-dir={}'.format(self.path)

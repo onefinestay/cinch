@@ -7,7 +7,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app, models
 from cinch.check import check, CheckStatus
-from cinch.git import Repo, NotARepo
+from cinch.git import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -149,8 +149,11 @@ def handle_push(repo_info):
     if project is None:
         return Responses.UNKNOWN_PROJECT
 
+    first = True
     for pr in project.pull_requests:
-        set_relative_states(pr)
+        set_relative_states(pr, fetch=first)
+        first = False
+
     models.db.session.commit()
     return Responses.MASTER_PUSH_OK
 
@@ -187,15 +190,16 @@ def handle_pull_request(repo_info, pr_info):
     return Responses.PR_OK
 
 
-def set_relative_states(pr):
+def set_relative_states(pr, fetch=True):
     """Set values of states that are relative to the base branch"""
 
     project = pr.project
     git_repo = Repo.from_local_repo(project.owner, project.name)
-    try:
-        git_repo.fetch()
-    except NotARepo:
+    if not git_repo.is_repo():
         git_repo = Repo.setup_repo(project.owner, project.name)
+
+    if fetch:
+        git_repo.fetch()
 
     # we currently assume that the base is master
     behind, ahead = git_repo.compare_pr(pr.number)

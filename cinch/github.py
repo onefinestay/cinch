@@ -13,6 +13,19 @@ logger = logging.getLogger(__name__)
 
 MASTER_REF = 'refs/heads/master'
 
+RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
+PullRequestInfo = namedtuple(
+    'PullRequestInfo', ['number', 'title', 'head', 'state', 'base_ref'])
+
+class Responses(object):
+    UNKNOWN_PROJECT = "Ignoring: Unknown project"
+    UNKNOWN_ACTION = "Ignoring: Unknown action"
+    NON_MASTER_PUSH = "Ignoring: Non-master push"
+    NON_MASTER_PR = "Ignoring: Not against master"
+
+    MASTER_PUSH_OK = "Master push handled"
+    PR_OK = "Pull request updated"
+
 
 def get_or_create_commit(sha, project):
     commit = models.Commit.query.get(sha)
@@ -22,11 +35,6 @@ def get_or_create_commit(sha, project):
         models.db.session.flush()
 
     return commit
-
-
-RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
-PullRequestInfo = namedtuple(
-    'PullRequestInfo', ['number', 'title', 'head', 'state', 'base_ref'])
 
 
 class GithubHookParser(object):
@@ -71,7 +79,7 @@ class GithubHookParser(object):
         pr_info = self.data['pull_request']
 
         pr_number = pr_info['number']
-        title = pr_info['title']
+        title = pr_info.get('title', '')  # TODO: can this be missing?
         head = pr_info['head']['sha']
         state = pr_info['state']
         base_ref = pr_info['base']['ref']
@@ -120,36 +128,44 @@ def handle_github_webhok():
     if parser.is_ping():
         return "pong"
 
-    repo_info = parser.get_repo_info()
-    project = get_project_from_repo_info(repo_info)
-    if project is None:
-        return "Ignoring: Unknown project"
-
     if parser.is_push():
         if not parser.is_master_push():
-            return "Ignoring: Non-master push"
+            return Responses.NON_MASTER_PUSH
 
-        for pr in project.pull_requests:
-            set_relative_states(pr)
-        models.db.session.commit()
-        return "Master push handled"
+        repo_info = parser.get_repo_info()
+        return handle_push(repo_info)
 
     elif parser.is_pull_request():
+        repo_info = parser.get_repo_info()
         pr_info = parser.get_pull_request_info()
-        return handle_pull_request(project, repo_info, pr_info)
+        return handle_pull_request(repo_info, pr_info)
 
     else:
-        return "Ignoring: unknown action"
+        return Responses.UNKNOWN_ACTION
 
 
-def handle_pull_request(project, repo_info, pr_info):
+def handle_push(repo_info):
+    project = get_project_from_repo_info(repo_info)
+    if project is None:
+        return Responses.UNKNOWN_PROJECT
+
+    for pr in project.pull_requests:
+        set_relative_states(pr)
+    models.db.session.commit()
+    return Responses.MASTER_PUSH_OK
+
+
+def handle_pull_request(repo_info, pr_info):
     # TODO: handle pull requests across different repos (forks)
     # we currently assume same repo
+    project = get_project_from_repo_info(repo_info)
+    if project is None:
+        return Responses.UNKNOWN_PROJECT
 
     if pr_info.base_ref != GithubHookParser.MASTER:
         # TODO: track these with a separate check "is_against_master"?
         # if so, set_relative_states needs to get the base sha or similar
-        return "Ignoring: Not against master"
+        return Responses.NON_MASTER_PR
 
     commit = get_or_create_commit(pr_info.head, project)
     pr = models.PullRequest.query.get((pr_info.number, project.id))
@@ -158,7 +174,7 @@ def handle_pull_request(project, repo_info, pr_info):
         # first time we've heard of it
         pr = models.PullRequest(
             number=pr_info.number,
-            project_id=project.id,
+            project=project,
             owner=repo_info.owner,
             title=pr_info.title,
             is_open=(pr_info.state == 'open'),
@@ -168,10 +184,10 @@ def handle_pull_request(project, repo_info, pr_info):
     pr.head_commit = commit.sha
     set_relative_states(pr)
     models.db.session.commit()
-    return "Pull request updated"
+    return Responses.PR_OK
 
 
-def set_relative_states(pr, commit=False):
+def set_relative_states(pr):
     """Set values of states that are relative to the base branch"""
 
     project = pr.project
@@ -188,8 +204,6 @@ def set_relative_states(pr, commit=False):
     pr.behind_master = behind
     pr.ahead_of_master = ahead
     pr.is_mergeable = is_mergeable
-    if commit:
-        models.db.session.commit()
 
 
 ## Checks

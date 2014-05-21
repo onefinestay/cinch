@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from itertools import count
 
 import pytest
@@ -5,7 +6,7 @@ import pytest
 from cinch.models import Project, Commit, PullRequest
 from cinch.jenkins.models import Job
 from cinch.jenkins.controllers import (
-    record_job_result, record_job_sha, _all_open_prs
+    record_job_result, record_job_sha, _all_open_prs, get_successful_job_shas
 )
 
 counter = count()
@@ -130,45 +131,55 @@ def test_record_job_result(session, fixtures):
 
 
 def test_get_successful_builds(session, fixtures, app_context):
+    library_unit = fixtures['library_unit']
+    small_app_integration = fixtures['small_app_integration']
+
     library_master = "lib-master-sha"
 
     # library@master passes unit tests
-    # shas = {
-        # 'library': library_master
-    # }
+    shas = {
+        'library': library_master
+    }
+
     record_job_sha('library_unit', 1, 'library', library_master)
     record_job_result('library_unit', 1, True, "passed")
 
-    # build_shas = shas
-    pr = make_pr(session, 'library', library_master)
-    # assert has_successful_builds(fixtures['library_unit'], build_shas)
-    assert has_successful_builds(pr, fixtures['library_unit'])
+    successful_job_shas = get_successful_job_shas({library_unit: shas})
+    successful_shas = successful_job_shas[library_unit]
+    assert successful_shas[(library_master,)] == 1
 
     # small_app@sha1 integration passes against library@master
-    # shas = {
-        # 'small_app': 'sha1',
-        # 'library': library_master
-    # }
-    record_job_sha('small_app_integration', 1, 'small_app', 'sha1')
-    record_job_sha('small_app_integration', 1, 'library', library_master)
-    record_job_result('small_app_integration', 1, True, "passed")
+    shas = OrderedDict([
+        ('small_app', 'sha1'),
+        ('library', library_master),
+    ])
+    record_job_sha('small_app_integration', 2, 'small_app', 'sha1')
+    record_job_sha('small_app_integration', 2, 'library', library_master)
+    record_job_result('small_app_integration', 2, True, "passed")
 
-    set_master(session, 'library', library_master)
-    small_app_pr = make_pr(session, 'small_app', 'sha1')
+    # set_master(session, 'library', library_master)
+    # small_app_pr = make_pr(session, 'small_app', 'sha1')
 
     # build_shas = shas
     # assert has_successful_builds(fixtures['small_app_integration'], build_shas)
     # import ipdb; ipdb.set_trace()
-    assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
+    # assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
+    successful_job_shas = get_successful_job_shas(
+        {small_app_integration: shas})
+    successful_shas = successful_job_shas[small_app_integration]
+    assert successful_shas[('sha1', library_master)] == 2
+
+
+
 
     # large_app@sha2 integration passes against library@master
     # shas = {
         # 'large_app': 'sha2',
         # 'library': library_master
     # }
-    record_job_sha('large_app_integration', 1, 'large_app', 'sha2')
-    record_job_sha('large_app_integration', 1, 'library', library_master)
-    record_job_result('large_app_integration', 1, True, "passed")
+    record_job_sha('large_app_integration', 3, 'large_app', 'sha2')
+    record_job_sha('large_app_integration', 3, 'library', library_master)
+    record_job_result('large_app_integration', 3, True, "passed")
 
     set_master(session, 'library', library_master)
     large_app_pr = make_pr(session, 'large_app', 'sha2')
@@ -195,7 +206,7 @@ def test_get_successful_builds(session, fixtures, app_context):
     # so we can omit small_app for build_shas dict
     # build_shas.pop('small_app')
     assert has_successful_builds(large_app_pr, fixtures['large_app_integration'])
-    assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
+    # assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
 
 
 def record_job_shas(job_name, build_number, shas):

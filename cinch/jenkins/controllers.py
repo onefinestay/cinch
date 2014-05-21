@@ -118,7 +118,7 @@ def get_successful_job_shas(job_shas):
         query = db.session.query(base_query)
         aliases = []
 
-        for project_name in shas:
+        for project_name in shas.keys():
             subquery_alias = db.session.query(
                 build_commits
                 ).join(Build).join(Job).filter_by(

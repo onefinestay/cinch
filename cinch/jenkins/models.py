@@ -18,7 +18,7 @@ class Job(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
-    projects = db.relationship('Project', secondary=job_projects)
+    projects = db.relationship('Project', secondary=job_projects, backref='jobs')
 
     def __str__(self):
         return "{} {}".format(self.name, self.type_id)

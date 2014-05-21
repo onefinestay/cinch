@@ -16,8 +16,8 @@ views  # pyflakes
 @pytest.fixture
 def fixtures(session):
 
-    library = Project(name="library", repo_name='library')
-    application = Project(name="application", repo_name='application')
+    library = Project(name="library", owner='owner')
+    application = Project(name="application", owner='owner')
 
     session.add(library)
     session.add(application)
@@ -97,6 +97,7 @@ def test_build_with_shas(fixtures, app_context):
     library.master_sha = 'sha2'
 
     pull_request = PullRequest(
+        is_open=True,
         number=1,
         project=application,
         head_commit='sha1',

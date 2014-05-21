@@ -1,10 +1,35 @@
 import pytest
 
-from cinch.models import Project, Commit
+from cinch.models import Project, Commit, PullRequest
 from cinch.jenkins.models import Job
 from cinch.jenkins.controllers import (
-    get_jobs, record_job_result, record_job_sha, has_successful_builds,
+    get_jobs, record_job_result, record_job_sha, _all_open_prs
 )
+
+def has_successful_builds(pull_request, job):
+    pr_map = _all_open_prs()
+    job_number = pr_map[pull_request][job]
+    return (job_number is not None)
+
+
+def set_master(session, project_name, sha):
+    project = session.query(Project).filter_by(name=project_name).one()
+    project.master_sha = sha
+    session.commit()  # TODO: needed?
+
+def make_pr(session, project_name, sha):
+    project = session.query(Project).filter_by(name=project_name).one()
+    pull_request = PullRequest(
+        is_open=True,
+        number=1,
+        project=project,
+        head_commit=sha,
+        owner='',
+        title='',
+    )
+    session.add(pull_request)
+    session.commit()
+    return pull_request
 
 
 @pytest.fixture
@@ -40,10 +65,10 @@ def fixtures(session):
     """
 
     # projects
-    library = Project(name="library", repo_name='library')
-    large_app = Project(name="large_app", repo_name='large_app')
-    small_app = Project(name="small_app", repo_name='small_app')
-    mobile = Project(name="mobile", repo_name='mobile')
+    library = Project(name="library", owner='owner')
+    large_app = Project(name="large_app", owner='owner')
+    small_app = Project(name="small_app", owner='owner')
+    mobile = Project(name="mobile", owner='owner')
 
     # unit jobs
     library_unit = Job(name="library_unit", projects=[library])
@@ -131,8 +156,10 @@ def test_get_successful_builds(session, fixtures, app_context):
     record_job_sha('library_unit', 1, 'library', library_master)
     record_job_result('library_unit', 1, True, "passed")
 
-    build_shas = shas
-    assert has_successful_builds(fixtures['library_unit'], build_shas)
+    # build_shas = shas
+    pr = make_pr(session, 'library', library_master)
+    # assert has_successful_builds(fixtures['library_unit'], build_shas)
+    assert has_successful_builds(pr, fixtures['library_unit'])
 
     # small_app@sha1 integration passes against library@master
     shas = {
@@ -143,8 +170,13 @@ def test_get_successful_builds(session, fixtures, app_context):
     record_job_sha('small_app_integration', 1, 'library', library_master)
     record_job_result('small_app_integration', 1, True, "passed")
 
-    build_shas = shas
-    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
+    set_master(session, 'library', library_master)
+    small_app_pr = make_pr(session, 'small_app', 'sha1')
+
+    # build_shas = shas
+    # assert has_successful_builds(fixtures['small_app_integration'], build_shas)
+    # import ipdb; ipdb.set_trace()
+    assert has_successful_builds(small_pr, fixtures['small_app_integration'])
 
     # large_app@sha2 integration passes against library@master
     shas = {
@@ -155,16 +187,21 @@ def test_get_successful_builds(session, fixtures, app_context):
     record_job_sha('large_app_integration', 1, 'library', library_master)
     record_job_result('large_app_integration', 1, True, "passed")
 
-    build_shas = shas
-    # large_app@sha2 has passed integration against library@master
-    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
+    set_master(session, 'library', library_master)
+    large_app_pr = make_pr(session, 'large_app', 'sha2')
 
-    build_shas['small_app'] = "sha1"
+    # build_shas = shas
+    # large_app@sha2 has passed integration against library@master
+    # assert has_successful_builds(fixtures['large_app_integration'], build_shas)
+    assert has_successful_builds(large_app_pr, fixtures['large_app_integration'])
+
+    # build_shas['small_app'] = "sha1"
 
     # small_app@sha1 has passed integration against library@master
     # large_app@sha2 has passed integration against library@master
-    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
-    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
+    # assert has_successful_builds(fixtures['large_app_integration'], build_shas)
+    # assert has_successful_builds(fixtures['small_app_integration'], build_shas)
+    # assert has_successful_builds
 
     # small_app master is at sha1
     small_app = session.query(Project).filter_by(name="small_app").one()

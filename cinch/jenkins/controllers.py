@@ -152,6 +152,10 @@ def has_successful_builds(job, branch_shas):
 
 @g_cache
 def all_open_prs():
+    return _all_open_prs()
+
+# so we can test without caching
+def _all_open_prs():
     import time
     start = time.time()
     count = 0
@@ -182,29 +186,47 @@ def all_open_prs():
     # interesting_shas = []
 
 
-    from .models import build_commits
+    # from .models import build_commits
+    from .models import BuildCommits
 
-    successful_job_shas = {}
+    # successful_job_shas = {}
     successful_job_shas2 = {}
     for job, shas in job_sha_map.items():
         base_query = db.session.query(Build).filter_by(success=True)
         subquery = base_query.subquery(name='basequery')
         query = db.session.query(subquery)
         aliases = []
+        # columns2 = [subquery.c.build_number]
+
+        # build_query = db.session.query(Job).filter_by(id=job.id).join(Build).join(build_commits)
 
         for project_name, sha in shas.items():
+            # alias = aliased(BuildCommits, name=project_name)
+            build_query = db.session.query(BuildCommits).join(Build).join(Job).filter_by(id=job.id).subquery(name=project_name)
+            # build_query = db.session.query(alias).join(Build).join(Job).filter_by(id=job.id).subquery(name=project_name)
+            # columns2.append(build_query)
+            aliases.append(build_query)
+            # columns2.append(alias.commit_sha)
+
+
             # project_id = project_map[project_name]
-            alias = aliased(build_commits, name=project_name)
-            aliases.append(alias)
+            # alias = aliased(build_commits, name=project_name)
+            # alias = alias(build_query)
+            # aliases.append(alias)
             query = query.outerjoin(
-                alias,
+                # alias,
+                build_query,
             )
 
-        columns = [alias.c.commit_sha for alias in aliases]
-        successful_job_shas[job] = set(query.values(*columns))
+        # columns = [alias.c.commit_sha for alias in aliases]
+        # successful_job_shas[job] = set(query.values(*columns))
 
         columns2 = [subquery.c.build_number] + [alias.c.commit_sha for alias in aliases]
         successful_job_shas2[job] = {result[1:]: result[0] for result in query.values(*columns2)}
+
+        # if job.name == 'small_app_integration':
+            # # import ipdb; ipdb.set_trace()
+            # pass
 
         # if job.name == 'main_full':
             # import ipdb; ipdb.set_trace()

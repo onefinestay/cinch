@@ -1,10 +1,14 @@
+from itertools import count
+
 import pytest
 
 from cinch.models import Project, Commit, PullRequest
 from cinch.jenkins.models import Job
 from cinch.jenkins.controllers import (
-    get_jobs, record_job_result, record_job_sha, _all_open_prs
+    record_job_result, record_job_sha, _all_open_prs
 )
+
+counter = count()
 
 def has_successful_builds(pull_request, job):
     pr_map = _all_open_prs()
@@ -21,7 +25,7 @@ def make_pr(session, project_name, sha):
     project = session.query(Project).filter_by(name=project_name).one()
     pull_request = PullRequest(
         is_open=True,
-        number=1,
+        number=next(counter),
         project=project,
         head_commit=sha,
         owner='',
@@ -101,27 +105,6 @@ def fixtures(session):
     return created
 
 
-def test_get_jobs(fixtures):
-    """
-    """
-    assert get_jobs("small_app").all() == [
-        fixtures['small_app_integration']
-    ]
-
-    assert get_jobs("large_app").all() == [
-        fixtures['large_app_unit'],
-        fixtures['large_app_integration'],
-        fixtures['mobile_integration'],
-    ]
-
-    assert get_jobs("library").all() == [
-        fixtures['library_unit'],
-        fixtures['large_app_integration'],
-        fixtures['small_app_integration'],
-        fixtures['mobile_integration'],
-    ]
-
-
 def test_record_job_result(session, fixtures):
 
     library_master = "lib-master-sha"
@@ -150,9 +133,9 @@ def test_get_successful_builds(session, fixtures, app_context):
     library_master = "lib-master-sha"
 
     # library@master passes unit tests
-    shas = {
-        'library': library_master
-    }
+    # shas = {
+        # 'library': library_master
+    # }
     record_job_sha('library_unit', 1, 'library', library_master)
     record_job_result('library_unit', 1, True, "passed")
 
@@ -162,10 +145,10 @@ def test_get_successful_builds(session, fixtures, app_context):
     assert has_successful_builds(pr, fixtures['library_unit'])
 
     # small_app@sha1 integration passes against library@master
-    shas = {
-        'small_app': 'sha1',
-        'library': library_master
-    }
+    # shas = {
+        # 'small_app': 'sha1',
+        # 'library': library_master
+    # }
     record_job_sha('small_app_integration', 1, 'small_app', 'sha1')
     record_job_sha('small_app_integration', 1, 'library', library_master)
     record_job_result('small_app_integration', 1, True, "passed")
@@ -176,13 +159,13 @@ def test_get_successful_builds(session, fixtures, app_context):
     # build_shas = shas
     # assert has_successful_builds(fixtures['small_app_integration'], build_shas)
     # import ipdb; ipdb.set_trace()
-    assert has_successful_builds(small_pr, fixtures['small_app_integration'])
+    assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
 
     # large_app@sha2 integration passes against library@master
-    shas = {
-        'large_app': 'sha2',
-        'library': library_master
-    }
+    # shas = {
+        # 'large_app': 'sha2',
+        # 'library': library_master
+    # }
     record_job_sha('large_app_integration', 1, 'large_app', 'sha2')
     record_job_sha('large_app_integration', 1, 'library', library_master)
     record_job_result('large_app_integration', 1, True, "passed")
@@ -204,14 +187,15 @@ def test_get_successful_builds(session, fixtures, app_context):
     # assert has_successful_builds
 
     # small_app master is at sha1
-    small_app = session.query(Project).filter_by(name="small_app").one()
-    small_app.master_sha = "sha1"  # not a foreign key, so we can just write this
-    session.commit()
+    # small_app = session.query(Project).filter_by(name="small_app").one()
+    # small_app.master_sha = "sha1"  # not a foreign key, so we can just write this
+    # session.commit()
+    set_master(session, 'small_app', 'sha1')
 
     # so we can omit small_app for build_shas dict
-    build_shas.pop('small_app')
-    assert has_successful_builds(fixtures['large_app_integration'], build_shas)
-    assert has_successful_builds(fixtures['small_app_integration'], build_shas)
+    # build_shas.pop('small_app')
+    assert has_successful_builds(large_app_pr, fixtures['large_app_integration'])
+    assert has_successful_builds(small_app_pr, fixtures['small_app_integration'])
 
 
 def record_job_shas(job_name, build_number, shas):
@@ -220,11 +204,12 @@ def record_job_shas(job_name, build_number, shas):
 
 
 def build_check(session, project_name, sha):
+    pr = make_pr(session, project_name, sha)
     project = session.query(Project).filter_by(name=project_name).one()
-    shas = {project_name: sha}
+    # shas = {project_name: sha}
     return all(
-        has_successful_builds(job, shas)
-        for job in get_jobs(project)
+        has_successful_builds(pr, job)
+        for job in project.jobs
     )
 
 

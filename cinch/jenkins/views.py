@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from itertools import chain
 import json
 import logging
 
@@ -7,7 +6,7 @@ from flask import Blueprint, request, abort, render_template
 
 from cinch import db
 from cinch.models import PullRequest, Project
-from .controllers import record_job_result, record_job_sha, get_jobs
+from .controllers import record_job_result, record_job_sha, all_open_prs
 
 
 logger = logging.getLogger(__name__)
@@ -76,10 +75,8 @@ def pull_request_status(project_name, pr_number):
     if pull_request is None:
         abort(404, "Unknown pull request")
 
-    unit_jobs = get_jobs(pull_request.project.name, 'unit')
-    integration_jobs = get_jobs(pull_request.project.name, 'integration')
-
-    jobs = chain(unit_jobs, integration_jobs)
+    pr_map = all_open_prs()
+    jobs = pr_map[pull_request].keys()
 
     return render_template('jenkins/pull_request_status.html',
         pull_request=pull_request,

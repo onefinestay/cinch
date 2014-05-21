@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from collections import OrderedDict
 
 from flask import url_for, g
-from sqlalchemy.orm import subqueryload, joinedload, aliased
+from sqlalchemy.orm import joinedload
 # from sqlalchemy.sql.expression import and_
 
 from cinch.check import check, CheckStatus
@@ -28,18 +28,6 @@ def g_cache(func):
         return cache[key]
 
     return wrapped
-
-@g_cache
-def _get_job_names(project_name):
-    return [job.name for job in get_jobs(project_name)]
-
-@g_cache
-def _get_jobs(project_name):
-    jobs = get_jobs(project_name
-        ).options(subqueryload('projects')
-        ).options(subqueryload('builds').subqueryload(Build.commits)
-    )
-    return jobs.all()
 
 
 def get_or_create_build(job, build_number):

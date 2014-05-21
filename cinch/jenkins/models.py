@@ -3,7 +3,6 @@ from collections import OrderedDict
 # from sqlalchemy.ext.associationproxy import association_proxy
 
 from cinch import db
-# from cinch.models import Commit, STRING_LENGTH
 from cinch.models import STRING_LENGTH
 
 

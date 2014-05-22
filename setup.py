@@ -5,19 +5,20 @@ here = os.path.abspath(os.path.dirname(__file__))
 make_abs = lambda fn: os.path.join(here, fn)
 
 
-def unpinned_requirments(filename):
-    with open(filename, 'r') as handle:
-        for dep in handle:
-            dep = dep.strip()
+def get_requirments(filename):
+    with open(filename, 'r') as file_handle:
+        requirements = []
+        for requirement in file_handle:
+            requirement = requirement.strip()
 
             # skip blank lines and comments
-            if not dep or dep.startswith('#'):
+            if not requirement or requirement.startswith('#'):
                 continue
-            package, _ = dep.split('==')
-            yield package
+            requirements.append(requirement)
+    return requirements
 
 
-requirements = unpinned_requirments(make_abs('requirements.txt'))
+requirements = get_requirments(make_abs('requirements.txt'))
 
 
 setup(

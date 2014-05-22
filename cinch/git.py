@@ -53,7 +53,7 @@ class Repo(object):
 
         url = GITHUB_URL_TEMPLATE.format(owner, name)
 
-        subprocess.check_output(
+        subprocess.check_call(
             [
                 'git',
                 'clone',

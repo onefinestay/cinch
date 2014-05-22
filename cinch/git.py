@@ -118,6 +118,9 @@ class Repo(object):
                 return None
         return output.strip()
 
+    def _pull_request_ref(self, pull_request_number):
+        return 'pr_head/{}'.format(pull_request_number)
+
     def compare(self, base, branch):
         """Count number of commits in branch that are not in base"""
         branches =  '{}..{}'
@@ -128,27 +131,37 @@ class Repo(object):
             return None
         return int(output)
 
-    def compare_pr(self, pr):
+    def compare_pr(self, pull_request_number):
         """Return tuple (behind, ahead) comparing pull request to master"""
 
-        branch = 'pr_head/{}'.format(pr)
+        pr_ref = self._pull_request_ref(pull_request_number)
         base = 'origin/master'
 
-        behind = self.compare(branch, base)
-        ahead = self.compare(base, branch)
+        behind = self.compare(pr_ref, base)
+        ahead = self.compare(base, pr_ref)
 
         return (behind, ahead)
 
-    def is_mergeable(self, pr):
-        """Return True if the pull request can merge cleanly into master"""
+    def is_mergeable(self, pull_request_number):
+        """Return True if the pull request can merge cleanly into master.
 
-        branch = 'pr_head/{}'.format(pr)
+        We check mergability by asking for an in-memory 3-way merge between
+        the merge base (branch point), master and the pull request head. We
+        then look for conflict notifications in the output.
+
+        When file contents is listed in the merge result, it has a single
+        character gutter (+/- for changes, or space for lines included for
+        context. Thus we are safe to compare whole lines to our sentinel
+        ``changed in both``.
+        """
+
+        pr_ref = self._pull_request_ref(pull_request_number)
         base = 'origin/master'
 
-        merge_base = self.cmd(['merge-base', branch, base])
-        merge_result = self.cmd(['merge-tree', merge_base, branch, base])
-        conflict_marker = '+>>>>>>>'  # '+' first, since this is a diff
+        merge_base = self.cmd(['merge-base', pr_ref, base])
+        merge_result = self.cmd(['merge-tree', merge_base, pr_ref, base])
+        sentinel = 'changed in both'
         for line in merge_result.splitlines():
-            if line.startswith(conflict_marker):
+            if line == sentinel:
                 return False
         return True

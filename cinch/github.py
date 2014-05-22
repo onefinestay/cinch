@@ -169,7 +169,7 @@ def handle_push(parser):
 
 def handle_pull_request(parser):
     # TODO: handle pull requests across different repos (forks)
-    # we currently assume same repo
+    # we currently assume same repo. See #24
     repo_info = parser.get_repo_info()
     project = get_project_from_repo_info(repo_info)
     if project is None:

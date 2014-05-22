@@ -11,6 +11,10 @@ from cinch import app
 GIT_ERROR = 128
 GITHUB_URL_TEMPLATE = "git@github.com:{}/{}.git"
 
+ORIGIN_REMOTE = '+refs/heads/*:refs/remotes/origin/*'
+# github exposes pull request heads and merge heads at these endpoints
+PULL_REQUEST_REMOTE_TEMPLATE = '+refs/pull/*/head:refs/remotes/{}/*'
+
 _log = logging.getLogger(__name__)
 
 
@@ -66,10 +70,11 @@ class Repo(object):
             repo,
             'origin',
             url,
-            '+refs/heads/*:refs/remotes/origin/*',
+            ORIGIN_REMOTE,
         )
+        # add remotes for github pull requests heads and merge heads
         for remote_name in ['pr_head', 'pr_merge']:
-            spec = '+refs/pull/*/head:refs/remotes/{}/*'.format(remote_name)
+            spec = PULL_REQUEST_REMOTE_TEMPLATE.format(remote_name)
             add_custom_remote(
                 repo,
                 remote_name,

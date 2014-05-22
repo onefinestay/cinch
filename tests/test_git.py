@@ -1,6 +1,6 @@
-from mock import patch
 import pytest
 
+from cinch import app
 from cinch.git import Repo
 
 
@@ -8,9 +8,8 @@ from cinch.git import Repo
 def tmp_base_dir(request):
     # builtin tmpdir fixture is function scoped :(
     tmpdir = request.config._tmpdirhandler.mktemp('cinch_repos')
-    with patch('cinch.git.app') as app:
-        app.config = {'REPO_BASE_DIR': tmpdir.strpath}
-        yield
+    app.config = {'REPO_BASE_DIR': tmpdir.strpath}
+    yield
     tmpdir.remove()
 
 

@@ -137,20 +137,17 @@ def handle_github_webhok():
     if parser.is_push():
         if not parser.is_master_push():
             return Responses.NON_MASTER_PUSH
-
-        repo_info = parser.get_repo_info()
-        return handle_push(repo_info)
+        return handle_push(parser)
 
     elif parser.is_pull_request():
-        repo_info = parser.get_repo_info()
-        pr_info = parser.get_pull_request_info()
-        return handle_pull_request(repo_info, pr_info)
+        return handle_pull_request(parser)
 
     else:
         return Responses.UNKNOWN_ACTION
 
 
-def handle_push(repo_info):
+def handle_push(parser):
+    repo_info = parser.get_repo_info()
     project = get_project_from_repo_info(repo_info)
     if project is None:
         return Responses.UNKNOWN_PROJECT
@@ -170,13 +167,15 @@ def handle_push(repo_info):
     return Responses.MASTER_PUSH_OK
 
 
-def handle_pull_request(repo_info, pr_info):
+def handle_pull_request(parser):
     # TODO: handle pull requests across different repos (forks)
     # we currently assume same repo
+    repo_info = parser.get_repo_info()
     project = get_project_from_repo_info(repo_info)
     if project is None:
         return Responses.UNKNOWN_PROJECT
 
+    pr_info = parser.get_pull_request_info()
     if pr_info.base_ref != GithubHookParser.MASTER:
         # TODO: track these with a separate check "is_against_master"?
         # if so, set_relative_states needs to get the base sha or similar

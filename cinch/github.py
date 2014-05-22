@@ -83,7 +83,7 @@ class GithubHookParser(object):
         pr_info = self.data['pull_request']
 
         pr_number = pr_info['number']
-        title = pr_info.get('title', '')  # TODO: can this be missing?
+        title = pr_info['title']
         head = pr_info['head']['sha']
         state = pr_info['state']
         base_ref = pr_info['base']['ref']

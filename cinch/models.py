@@ -6,12 +6,17 @@ STRING_LENGTH = 200
 
 class Project(db.Model):
     __tablename__ = "projects"
+    __table_args = (
+        db.UniqueConstraint('owner', 'name'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
-    repo_name = db.Column(
-        db.String(STRING_LENGTH), nullable=False, unique=True)
+    owner = db.Column(db.String(STRING_LENGTH), nullable=False)
+    name = db.Column(db.String(STRING_LENGTH), nullable=False)
     master_sha = db.Column(db.String(40), nullable=True)
+
+    def web_url(self):
+        return "https://github.com/{}/{}".format(self.owner, self.name)
 
     def __str__(self):
         return self.name
@@ -33,7 +38,7 @@ class PullRequest(db.Model):
     is_open = db.Column(db.Boolean, nullable=True)
 
     head = db.relationship('Commit')
-    project = db.relationship('Project')
+    project = db.relationship('Project', backref='pull_requests')
 
 
 class Commit(db.Model):

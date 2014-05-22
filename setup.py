@@ -8,6 +8,11 @@ make_abs = lambda fn: os.path.join(here, fn)
 def unpinned_requirments(filename):
     with open(filename, 'r') as handle:
         for dep in handle:
+            dep = dep.strip()
+
+            # skip blank lines and comments
+            if not dep or dep.startswith('#'):
+                continue
             package, _ = dep.split('==')
             yield package
 

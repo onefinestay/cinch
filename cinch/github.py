@@ -127,6 +127,8 @@ def handle_github_webhok():
     """We always return a 200 to keep github happy, but include info about
     actions taken
     """
+    # TODO: verify request is from github
+
     parser = GithubHookParser(request)
 
     if parser.is_ping():

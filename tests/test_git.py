@@ -27,7 +27,7 @@ def test_compare_unknown(repo):
     assert (behind, ahead) == (None, None)
 
 def test_fetch(repo):
-    # nothing to return. should just not brak
+    # nothing to return. should just not break
     assert repo.fetch() is None
 
 def test_is_mergeable(repo):

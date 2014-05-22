@@ -17,6 +17,16 @@ RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
 PullRequestInfo = namedtuple(
     'PullRequestInfo', ['number', 'title', 'head', 'state', 'base_ref'])
 
+
+class HookEvents(object):
+    """Constants for the X-Github-Event header used to signal event type"""
+    HEADER_KEY = 'X-GitHub-Event'
+
+    PING = 'ping'
+    PUSH = 'push'
+    PULL_REQUEST = 'pull_request'
+
+
 class Responses(object):
     UNKNOWN_PROJECT = "Ignoring: Unknown project"
     UNKNOWN_ACTION = "Ignoring: Unknown action"
@@ -40,17 +50,11 @@ def get_or_create_commit(sha, project):
 class GithubHookParser(object):
     """Parses data from a Flask request object from a github webhook
     """
-    EVENT_HEADER = 'X-GitHub-Event'
     MASTER = 'master'
     MASTER_REF = 'refs/heads/master'
 
-    class Events(object):
-        PING = 'ping'
-        PUSH = 'push'
-        PULL_REQUEST = 'pull_request'
-
     def __init__(self, request):
-        self.event_type = request.headers[self.EVENT_HEADER]
+        self.event_type = request.headers[HookEvents.HEADER_KEY]
 
         if self.is_ping():
             self.data = None
@@ -73,7 +77,7 @@ class GithubHookParser(object):
         """Returns the pull request number, or None if this is not a
         pull request event
         """
-        if self.event_type != self.Events.PULL_REQUEST:
+        if self.event_type != HookEvents.PULL_REQUEST:
             return None
 
         pr_info = self.data['pull_request']
@@ -93,17 +97,17 @@ class GithubHookParser(object):
         )
 
     def is_ping(self):
-        return self.event_type == self.Events.PING
+        return self.event_type == HookEvents.PING
 
     def is_pull_request(self):
-        return self.event_type == self.Events.PULL_REQUEST
+        return self.event_type == HookEvents.PULL_REQUEST
 
     def is_push(self):
-        return self.event_type == self.Events.PUSH
+        return self.event_type == HookEvents.PUSH
 
     def is_master_push(self):
         return (
-            self.event_type == self.Events.PUSH and
+            self.event_type == HookEvents.PUSH and
             self.data['ref'] == self.MASTER_REF
         )
 

@@ -12,6 +12,7 @@ from cinch.git import Repo
 logger = logging.getLogger(__name__)
 
 MASTER_REF = 'refs/heads/master'
+PULL_REQUEST_OPEN_STATE = 'open'
 
 RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
 PullRequestInfo = namedtuple(
@@ -191,7 +192,7 @@ def handle_pull_request(parser):
             project=project,
             owner=repo_info.owner,
             title=pr_info.title,
-            is_open=(pr_info.state == 'open'),
+            is_open=(pr_info.state == PULL_REQUEST_OPEN_STATE),
         )
         models.db.session.add(pr)
 

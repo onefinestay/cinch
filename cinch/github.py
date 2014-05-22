@@ -179,7 +179,8 @@ def handle_pull_request(parser):
     pr_info = parser.get_pull_request_info()
     if pr_info.base_ref != GithubHookParser.MASTER:
         # TODO: track these with a separate check "is_against_master"?
-        # if so, set_relative_states needs to get the base sha or similar
+        # if so, set_relative_states needs to get the base sha or similar,
+        # to pass to the git repo.
         return Responses.NON_MASTER_PR
 
     commit = get_or_create_commit(pr_info.head, project)

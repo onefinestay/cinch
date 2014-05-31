@@ -4,7 +4,6 @@ from flask import session, redirect, url_for
 
 
 def is_authenticated():
-    return True
     return session.get('access_token')
 
 

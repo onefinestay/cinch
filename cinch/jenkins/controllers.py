@@ -111,6 +111,46 @@ def get_job_master_shas():
     return job_master_shas
 
 
+def get_job_build_query(job_id, project_ids, successful_only=True):
+    """Construct a query, and column aliases for querying sha tuples for builds
+    of a given job
+
+    :Parameters:
+        job_id
+        project_ids
+
+    :Returns:
+        query, base_alias, project_sha_columns
+
+        The aliases for the projects are ordered to match the order of
+        `project_ids`
+    """
+    session = db.session
+    base_query = session.query(Build.id, Build.build_number, Build.success)
+    if successful_only:
+        base_query = base_query.filter(Build.success==True)
+    base_query = base_query.join(Job).filter(
+        Job.id==job_id).subquery(name='basequery')
+    query = db.session.query(base_query)
+    aliases = []
+
+    for project_id in project_ids:
+        subquery_alias = session.query(
+            BuildSha.build_id, BuildSha.sha
+            ).filter(BuildSha.project_id == project_id
+            ).subquery(name="project_{}_commits".format(project_id))
+        aliases.append(subquery_alias)
+
+        query = query.outerjoin(
+            subquery_alias,
+            subquery_alias.c.build_id == base_query.c.id,
+        )
+
+    sha_columns = [alias.c.sha for alias in aliases]
+
+    return query, base_query, sha_columns
+
+
 def get_successful_job_shas(job_master_shas):
     # For each job, we construct a query that finds tuples of shas
     # for all successful builds. We can then match those against the required
@@ -120,40 +160,20 @@ def get_successful_job_shas(job_master_shas):
     # that n depends on the number of _jobs_, not the number of builds or open
     # pull requests.
 
-    session = db.session
     successful_job_shas = {}
     for job_id, shas in job_master_shas.items():
         # The subqueries for the related projects are ordered in
         # `successful_job_shas` below. This order needs to match
         # the order use to look them up later for each pull_request.
-        base_query = session.query(
-            Build.id, Build.build_number).filter_by(
-            success=True).join(Job).filter_by(
-            id=job_id).subquery(name='basequery')
-        query = db.session.query(base_query)
-        aliases = []
-
-        for project_id in shas.keys():
-            subquery_alias = session.query(
-                BuildSha.build_id, BuildSha.sha
-                ).filter(BuildSha.project_id == project_id
-                ).subquery(name="project_{}_commits".format(project_id))
-            aliases.append(subquery_alias)
-
-            query = query.outerjoin(
-                subquery_alias,
-                subquery_alias.c.build_id == base_query.c.id,
-            )
-
-        columns = [base_query.c.build_number] + [
-            alias.c.sha for alias in aliases]
+        query, base_query, sha_columns = get_job_build_query(
+            job_id, shas.keys())
 
         # for each job, successful_job_shas is a dictionary, mapping tuples
         # of shas (ordered as per the job_sha_map) for successful builds to
         # the build number in question
         successful_job_shas[job_id] = {
             result[1:]: result[0]
-            for result in query.values(*columns)
+            for result in query.values(base_query.c.build_number, *sha_columns)
         }
 
     return successful_job_shas

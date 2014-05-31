@@ -239,8 +239,6 @@ class TestGetSuccessfulJobShas(object):
 
         @event.listens_for(Engine, "after_cursor_execute")
         def after_cursor_execute(*args, **kwargs):
-            # if n_queries[0] == 0:
-                # import ipdb; ipdb.set_trace()
             foo.append((args, kwargs))
             n_queries[0] += 1
 

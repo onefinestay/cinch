@@ -100,7 +100,7 @@ def test_build_with_shas(fixtures, app_context):
         is_open=True,
         number=1,
         project=application,
-        head_commit='sha1',
+        head='sha1',
         owner='',
         title='',
     )

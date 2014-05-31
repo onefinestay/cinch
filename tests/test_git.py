@@ -1,3 +1,4 @@
+from mock import patch
 import pytest
 
 from cinch import app
@@ -10,8 +11,8 @@ pytestmark = pytest.mark.slow
 def tmp_base_dir(request):
     # builtin tmpdir fixture is function scoped :(
     tmpdir = request.config._tmpdirhandler.mktemp('cinch_repos')
-    app.config = {'REPO_BASE_DIR': tmpdir.strpath}
-    yield
+    with patch.object(app, 'config', {'REPO_BASE_DIR': tmpdir.strpath}):
+        yield
     tmpdir.remove()
 
 

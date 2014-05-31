@@ -3,10 +3,11 @@ import json
 import logging
 
 from flask import Blueprint, request, abort, render_template
+from sqlalchemy.orm import joinedload
 
 from cinch import db
 from cinch.models import PullRequest, Project
-from .controllers import record_job_result, record_job_sha, all_open_prs
+from .controllers import record_job_result, record_job_sha, get_job_build_query
 from .exceptions import UnknownProject, UnknownJob
 from .models import Job
 
@@ -94,11 +95,32 @@ def pull_request_status(project_owner, project_name, pr_number):
     if pull_request is None:
         abort(404, "Unknown pull request")
 
-    pr_map = all_open_prs()
-    job_ids = pr_map[pull_request].keys()
-    jobs = db.session.query(Job).filter(Job.id.in_(job_ids))
+    pull_request_project = pull_request.project
+
+    job_builds = {}
+    jobs = db.session.query(Job).options(joinedload('projects'))
+    for job in jobs:
+        if pull_request_project not in job.projects:
+            continue
+
+        query, base_query, sha_columns = get_job_build_query(
+            job.id,
+            [project.id for project in job.projects],
+            successful_only=False,
+        )
+
+        # build number, success, shas
+        job_builds[job] = [
+            (result[0], result[1], result[2:])
+            for result in query.values(
+                base_query.c.build_number,
+                base_query.c.success,
+                *sha_columns
+            )
+        ]
 
     return render_template('jenkins/pull_request_status.html',
         pull_request=pull_request,
         jobs=jobs,
+        job_builds=job_builds,
     )

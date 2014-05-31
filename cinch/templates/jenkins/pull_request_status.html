@@ -6,42 +6,32 @@
 {{ pull_request.title }}
 </h1>
 
-<h3>Head: {{ pull_request.head }}</h3>
+<h3>Head: <code>{{ pull_request.head }}</code></h3>
 
 {% for job in jobs %}
-<h2>Job: {{ job.name }}</h2>
+<h2>Job: <tt>{{ job.name }}</tt></h2>
 
     <table border="1" cellspacing="1" class="status_table">
     <tr>
-    <th>id</th>
+    <th>Job number</th>
     <th>Status</th>
     {% for project in job.ordered_projects() %}
-        <th>{{ project.name }} ({{ project.master_sha }})</th>
+        <th>{{ project.name }} (master: <code>{{ project.master_sha }}</code>)</th>
     {% endfor %}
     </tr>
 
-    {% for build in job.builds %}
-    {% if build.matches_pull_request(pull_request) %}
+    {% for build_number, was_success, shas in job_builds[job] %}
     <tr>
-    <td>{{ build.id }}</td>
+    <td>{{ build_number }}</td>
     <td>
-        <span class="badge badge-{% if build.status %}success{% else %}warning{% endif %}">
-        {{ build.status }}
+        <span class="badge badge-{% if was_success %}success{% else %}warning{% endif %}">
+    {% if was_success %}Passed{% else %}Failed{% endif %}
         </span>
     </td>
-        {% for project in job.ordered_projects() %}
-            {% with %}
-                {% set commit = build.project_commits()[project.name] %}
-                <td>{{ commit }}
-                {% if
-                    project != pull_request.project and
-                    project.master_sha != commit
-                %} (not master){% endif %}
-                </td>
-            {% endwith %}
+        {% for sha in shas %}
+            <td><code>{{ sha }}</code></td>
         {% endfor %}
     </tr>
-    {% endif %}
     {% endfor %}
     </table>
 

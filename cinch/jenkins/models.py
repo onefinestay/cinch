@@ -31,7 +31,7 @@ class Build(db.Model):
     success = db.Column(db.Boolean, nullable=True)
     status = db.Column(db.Text, nullable=True, default="")
 
-    job = db.relationship('Job', backref='builds')
+    job = db.relationship('Job')
 
     def __str__(self):
         return "{}/{}".format(self.job.name, self.build_number)

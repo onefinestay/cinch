@@ -70,8 +70,8 @@ def test_record_job_result(session, fixtures):
     library_master = "lib-master-sha"
 
     # test app@sha1 against master library
-    record_job_sha('app_integration', 1, 'app', 'sha1')
-    record_job_sha('app_integration', 1, 'library', library_master)
+    record_job_sha('app_integration', 1, 'owner', 'app', 'sha1')
+    record_job_sha('app_integration', 1, 'owner', 'library', library_master)
 
     record_job_result('app_integration', 1, True, "passed")
 
@@ -82,8 +82,8 @@ def test_record_job_result(session, fixtures):
         sha="sha1").one().project.name == "app"
 
     # test app@sha2 against master library
-    record_job_sha('app_integration', 2, 'app', 'sha2')
-    record_job_sha('app_integration', 2, 'library', library_master)
+    record_job_sha('app_integration', 2, 'owner', 'app', 'sha2')
+    record_job_sha('app_integration', 2, 'owner', 'library', library_master)
 
     record_job_result('app_integration', 2, True, "passed")
 
@@ -97,7 +97,7 @@ class TestGetSuccessfulJobShas(object):
         library = fixtures['library']
 
         # library@sha1 passes unit tests
-        record_job_sha('library_unit', 1, 'library', 'sha1')
+        record_job_sha('library_unit', 1, 'owner', 'library', 'sha1')
         record_job_result('library_unit', 1, True, "passed")
 
         shas = OrderedDict([
@@ -120,8 +120,8 @@ class TestGetSuccessfulJobShas(object):
             (app.id, ''),
             (library.id, ''),
         ])
-        record_job_sha('app_integration', 2, 'app', 'sha2')
-        record_job_sha('app_integration', 2, 'library', 'sha3')
+        record_job_sha('app_integration', 2, 'owner', 'app', 'sha2')
+        record_job_sha('app_integration', 2, 'owner', 'library', 'sha3')
         record_job_result('app_integration', 2, True, "passed")
 
         successful = get_successful_shas(fixtures['app_integration'].id, shas)
@@ -135,12 +135,12 @@ class TestGetSuccessfulJobShas(object):
             (app.id, ''),
             (library.id, ''),
         ])
-        record_job_sha('app_integration', 2, 'app', 'sha2')
-        record_job_sha('app_integration', 2, 'library', 'sha3')
+        record_job_sha('app_integration', 2, 'owner', 'app', 'sha2')
+        record_job_sha('app_integration', 2, 'owner', 'library', 'sha3')
         record_job_result('app_integration', 2, True, "passed")
 
-        record_job_sha('app_integration', 4, 'app', 'sha4')
-        record_job_sha('app_integration', 4, 'library', 'sha5')
+        record_job_sha('app_integration', 4, 'owner', 'app', 'sha4')
+        record_job_sha('app_integration', 4, 'owner', 'library', 'sha5')
         record_job_result('app_integration', 4, True, "passed")
 
         successful = get_successful_shas(fixtures['app_integration'].id, shas)
@@ -157,12 +157,12 @@ class TestGetSuccessfulJobShas(object):
             (app.id, ''),
             (library.id, ''),
         ])
-        record_job_sha('app_integration', 2, 'app', 'sha2')
-        record_job_sha('app_integration', 2, 'library', 'sha3')
+        record_job_sha('app_integration', 2, 'owner', 'app', 'sha2')
+        record_job_sha('app_integration', 2, 'owner', 'library', 'sha3')
         record_job_result('app_integration', 2, True, "passed")
 
-        record_job_sha('app_integration', 4, 'app', 'sha4')
-        record_job_sha('app_integration', 4, 'library', 'sha5')
+        record_job_sha('app_integration', 4, 'owner', 'app', 'sha4')
+        record_job_sha('app_integration', 4, 'owner', 'library', 'sha5')
         record_job_result('app_integration', 4, False, "passed")
 
         successful = get_successful_shas(fixtures['app_integration'].id, shas)
@@ -176,7 +176,7 @@ class TestGetSuccessfulJobShas(object):
         app = fixtures['app']
 
         # library@sha1 passes unit tests
-        record_job_sha('library_unit', 1, 'library', 'sha1')
+        record_job_sha('library_unit', 1, 'owner', 'library', 'sha1')
         record_job_result('library_unit', 1, True, "passed")
 
         library_unit = fixtures['library_unit']
@@ -211,12 +211,12 @@ class TestGetSuccessfulJobShas(object):
         session.add(app_integration2)
         session.commit()
 
-        record_job_sha('app_integration', 1, 'app', 'sha2')
-        record_job_sha('app_integration', 1, 'library', 'sha3')
+        record_job_sha('app_integration', 1, 'owner', 'app', 'sha2')
+        record_job_sha('app_integration', 1, 'owner', 'library', 'sha3')
         record_job_result('app_integration', 1, True, "passed")
 
-        record_job_sha('app_integration2', 1, 'app', 'sha4')
-        record_job_sha('app_integration2', 1, 'library', 'sha5')
+        record_job_sha('app_integration2', 1, 'owner', 'app', 'sha4')
+        record_job_sha('app_integration2', 1, 'owner', 'library', 'sha5')
         record_job_result('app_integration2', 1, True, "passed")
 
         successful = get_successful_job_shas({
@@ -245,8 +245,10 @@ class TestGetSuccessfulJobShas(object):
             n_queries[0] += 1
 
         for x in range(20):
-            record_job_sha('app_integration', x, 'app', 'shax{}'.format(x))
-            record_job_sha('app_integration', x, 'library', 'shay{}'.format(x))
+            record_job_sha(
+                'app_integration', x, 'owner', 'app', 'shax{}'.format(x))
+            record_job_sha(
+                'app_integration', x, 'owner', 'library', 'shay{}'.format(x))
             record_job_result('app_integration', x, True, "passed")
 
         library = fixtures['library']
@@ -281,11 +283,6 @@ class TestGetSuccessfulJobShas(object):
         assert qc.count == 2
 
 
-def record_job_shas(job_name, build_number, shas):
-    for project_name, sha in shas.items():
-        record_job_sha(job_name, build_number, project_name, sha)
-
-
 def build_check(session, project_name, sha):
     getattr(g, '_cache', {}).clear()
     pr = make_pr(session, project_name, sha)
@@ -298,7 +295,7 @@ def test_integration_test_check(session, fixtures, app_context):
     lib_sha = "lib-proposed-sha"
 
     # library@proposed-sha passes unit tests
-    record_job_sha('library_unit', 1, 'library', lib_sha)
+    record_job_sha('library_unit', 1, 'owner', 'library', lib_sha)
     record_job_result('library_unit', 1, True, "passed")
 
     app = fixtures['app']
@@ -311,11 +308,8 @@ def test_integration_test_check(session, fixtures, app_context):
     assert not build_check(session, 'library', lib_sha)
 
     # app@sha1 integration passes against library@lib_sha
-    shas = {
-        'app': 'sha1',
-        'library': lib_sha,
-    }
-    record_job_shas('app_integration', 1, shas)
+    record_job_sha('app_integration', 1, 'owner', 'app', 'sha1')
+    record_job_sha('app_integration', 1, 'owner', 'library', lib_sha)
     record_job_result('app_integration', 1, True, "passed")
 
     # library integration now satisfied

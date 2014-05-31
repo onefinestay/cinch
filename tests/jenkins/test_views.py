@@ -37,11 +37,38 @@ def test_record_sha(fixtures):
     data = {
         'job_name': 'app_integration',
         'build_number': 1,
+        'project_owner': 'owner',
         'project_name': 'application',
         'sha': 'sha1',
     }
     response = client.post('/jenkins/api/build_sha', data=data)
     assert response.status_code == 200
+
+
+def test_record_sha_unknown_job(fixtures):
+    client = app.test_client()
+    data = {
+        'job_name': 'foo',
+        'build_number': 1,
+        'project_owner': 'owner',
+        'project_name': 'app',
+        'sha': 'sha1',
+    }
+    response = client.post('/jenkins/api/build_sha', data=data)
+    assert response.status_code == 404
+
+
+def test_record_sha_unknown_project(fixtures):
+    client = app.test_client()
+    data = {
+        'job_name': 'app_unit',
+        'build_number': 1,
+        'project_owner': 'owner',
+        'project_name': 'bar',
+        'sha': 'sha1',
+    }
+    response = client.post('/jenkins/api/build_sha', data=data)
+    assert response.status_code == 404
 
 
 def make_jenkins_data(job_name, build_number, status='SUCCESS'):
@@ -66,11 +93,20 @@ def test_record_status(fixtures):
     assert response.status_code == 200
 
 
+def test_record_status_unknown_job(fixtures):
+    client = app.test_client()
+    data = make_jenkins_data('app_integration', 2)
+    data['name'] = 'foo'
+    response = client.post('/jenkins/api/build_status', data=json.dumps(data))
+    assert response.status_code == 404
+
+
 def test_build_with_shas(fixtures, app_context):
     client = app.test_client()
     data = {
         'job_name': 'app_integration',
         'build_number': 3,
+        'project_owner': 'owner',
         'project_name': 'application',
         'sha': 'sha1',
     }
@@ -80,6 +116,7 @@ def test_build_with_shas(fixtures, app_context):
     data = {
         'job_name': 'app_integration',
         'build_number': 3,
+        'project_owner': 'owner',
         'project_name': 'library',
         'sha': 'sha2',
     }

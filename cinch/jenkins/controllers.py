@@ -4,10 +4,12 @@ from collections import OrderedDict
 
 from flask import url_for, g
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 
 from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
 from .models import Job, Build, BuildSha
+from .exceptions import UnknownProject, UnknownJob
 
 
 def g_cache(func):
@@ -47,7 +49,7 @@ def get_or_create_build(job, build_number):
     return build
 
 
-def record_job_sha(job_name, build_number, project_name, sha):
+def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     """ The Jenkins notifications plugin provides no good way to include
     metadata generate during a build (e.g. resolved git refs) in the
     notification body. This enables an enpoint to collect such data _during_
@@ -55,10 +57,21 @@ def record_job_sha(job_name, build_number, project_name, sha):
     """
 
     session = db.session
-    job = session.query(Job).filter(Job.name == job_name).one()
+
+    try:
+        job = session.query(Job).filter(Job.name == job_name).one()
+    except NoResultFound:
+        raise UnknownJob(job_name)
+
     build = get_or_create_build(job, build_number)
 
-    project = session.query(Project).filter_by(name=project_name).one()
+    try:
+        project = session.query(Project).filter(
+            Project.owner==project_owner, Project.name==project_name
+        ).one()
+    except NoResultFound:
+        raise UnknownProject(project_owner, project_name)
+
     build_sha = session.query(BuildSha).get((build.id, project.id))
     if build_sha is None:
         build_sha = BuildSha(build=build, project=project)
@@ -72,7 +85,11 @@ def record_job_result(job_name, build_number, success, status):
     `record_job_sha` below.
     """
 
-    job = db.session.query(Job).filter(Job.name == job_name).one()
+    try:
+        job = db.session.query(Job).filter(Job.name == job_name).one()
+    except NoResultFound:
+        raise UnknownJob
+
     build = get_or_create_build(job, build_number)
 
     build.success = success
@@ -205,6 +222,7 @@ def jenkins_check(pull_request):
     # TODO: one url per job
     url = url_for(
         'jenkins.pull_request_status',
+        project_owner=pull_request.project.owner,
         project_name=pull_request.project.name,
         pr_number=pull_request.number,
     )

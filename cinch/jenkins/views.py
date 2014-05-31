@@ -7,6 +7,8 @@ from flask import Blueprint, request, abort, render_template
 from cinch import db
 from cinch.models import PullRequest, Project
 from .controllers import record_job_result, record_job_sha, all_open_prs
+from .exceptions import UnknownProject, UnknownJob
+from .models import Job
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,10 @@ def build_status():
     status = build['status']
     success = (status == 'SUCCESS')
 
-    record_job_result(job_name, build_number, success, status)
+    try:
+        record_job_result(job_name, build_number, success, status)
+    except UnknownJob:
+        return "Unknown job {}".format(job_name), 404
 
     return 'OK', 200
 
@@ -47,36 +52,51 @@ def build_sha():
     """ View for manual jenkins request to post shas for projects
 
     Example:
+        $ PROJECT_OWNER="me"
         $ PROJECT_NAME="my_project"
         $ SHA=$(git rev-parse HEAD)
 
         $ curl $CINCH -d "job_name=$JOB_NAME&build_number=$BUILD_NUMBER\
-            project_name=$PROJECT_NAME&sha=$SHA
+            project_owner=$PROJECT_OWNER&project_name=$PROJECT_NAME&sha=$SHA
     """
     logger.debug('receiving jenkins shas')
 
     form = request.form
-    record_job_sha(
-        form['job_name'],
-        form['build_number'],
-        form['project_name'],
-        form['sha'],
-    )
+    job_name = form['job_name']
+    project_owner = form['project_owner']
+    project_name = form['project_name']
+    try:
+        record_job_sha(
+            job_name,
+            form['build_number'],
+            project_owner,
+            project_name,
+            form['sha'],
+        )
+    except UnknownProject:
+        return "Unknown project {}/{}".format(
+            project_owner, project_name), 404
+    except UnknownJob:
+        return "Unknown job {}".format(job_name), 404
 
     return 'OK', 200
 
 
-@jenkins.route('/pr/<project_name>/<pr_number>')
-def pull_request_status(project_name, pr_number):
-    pull_request = db.session.query(PullRequest).join(Project).filter(
+@jenkins.route('/pr/<project_owner>/<project_name>/<pr_number>')
+def pull_request_status(project_owner, project_name, pr_number):
+    session = db.session
+
+    pull_request = session.query(PullRequest).join(Project).filter(
         PullRequest.number == pr_number,
-        Project.name == project_name).first()
+        Project.owner == project_owner, Project.name == project_name
+    ).first()
 
     if pull_request is None:
         abort(404, "Unknown pull request")
 
     pr_map = all_open_prs()
-    jobs = pr_map[pull_request].keys()
+    job_ids = pr_map[pull_request].keys()
+    jobs = db.session.query(Job).filter(Job.id.in_(job_ids))
 
     return render_template('jenkins/pull_request_status.html',
         pull_request=pull_request,

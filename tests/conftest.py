@@ -31,4 +31,4 @@ def session():
 def app_context():
     from cinch import app
     with app.test_request_context():
-        yield
+        yield app

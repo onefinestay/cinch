@@ -52,5 +52,3 @@ def fixtures(session):
     session.commit()
 
     return created
-
-

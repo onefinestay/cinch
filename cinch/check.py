@@ -1,3 +1,5 @@
+from collections import Iterable
+
 _check_registry = []
 
 
@@ -24,4 +26,9 @@ def check(method):
 
 def run_checks(pull):
     for check in _check_registry:
-        yield check(pull)
+        check_retval = check(pull)
+        if isinstance(check_retval, Iterable):
+            for check_status in check_retval:
+                yield check_status
+        else:
+            yield check_retval

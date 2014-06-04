@@ -1,11 +1,16 @@
 import json
 
+import mock
 import pytest
 
 from cinch import app, db
-from cinch.models import Project
+from cinch.models import Project, PullRequest
 from cinch.jenkins.models import Job
-from cinch.jenkins.controllers import build_check
+from cinch.jenkins import views
+from cinch.jenkins.controllers import jenkins_check
+
+
+views  # pyflakes
 
 
 @pytest.fixture
@@ -91,6 +96,16 @@ def test_build_with_shas(fixtures, app_context):
     application.master_sha = 'sha1'
     library.master_sha = 'sha2'
 
+    pull_request = PullRequest(
+        number=1,
+        project=application,
+        head_commit='sha1',
+        owner='',
+        title='',
+    )
+    db.session.add(pull_request)
+
     db.session.commit()
 
-    assert build_check('application', 'sha1')
+    statuses = [check.status for check in jenkins_check(pull_request)]
+    assert all(statuses)

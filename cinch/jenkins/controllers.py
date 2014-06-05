@@ -88,7 +88,7 @@ def record_job_result(job_name, build_number, success, status):
     try:
         job = db.session.query(Job).filter(Job.name == job_name).one()
     except NoResultFound:
-        raise UnknownJob
+        raise UnknownJob(job_name)
 
     build = get_or_create_build(job, build_number)
 

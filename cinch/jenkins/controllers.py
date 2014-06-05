@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from collections import OrderedDict
 
 from flask import url_for, g
+from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -10,6 +11,10 @@ from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
 from .models import Job, Build, BuildSha
 from .exceptions import UnknownProject, UnknownJob
+
+
+# for pep8
+NULL = None
 
 
 def g_cache(func):
@@ -153,6 +158,7 @@ def get_job_build_query(job_id, project_ids, successful_only=True):
         )
 
     sha_columns = [alias.c.sha for alias in aliases]
+    query = query.filter(and_(column != NULL for column in sha_columns))
 
     return query, base_query, sha_columns
 

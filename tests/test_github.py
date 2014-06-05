@@ -97,7 +97,7 @@ class TestPush(object):
     def test_master(self, session, project, hook_post, mock_dispatch):
         pr = PullRequest(
             project=project, number=1, head='sha1', owner='me', title='foo',
-            is_open=True,
+            ahead_of_master=1, behind_master=2, is_open=True,
         )
         session.add(pr)
         session.commit()
@@ -120,6 +120,10 @@ class TestPush(object):
             'owner': project.owner,
             'name': project.name,
         }
+
+        pr_loaded = session.query(PullRequest).one()
+        assert pr_loaded.ahead_of_master is None
+        assert pr_loaded.behind_master is None
 
 
 class TestPullRequest(object):

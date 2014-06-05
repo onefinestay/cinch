@@ -1,15 +1,14 @@
 from collections import OrderedDict
 from itertools import count
 
-from flask import g
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 from cinch.models import Project, PullRequest
 from cinch.jenkins.models import Job, BuildSha
 from cinch.jenkins.controllers import (
-    record_job_result, record_job_sha, all_open_prs, get_successful_job_shas,
-    jenkins_check,
+    clear_g_cache, record_job_result, record_job_sha, all_open_prs,
+    get_successful_job_shas, jenkins_check,
 )
 
 counter = count()
@@ -33,7 +32,7 @@ class QueryCounter():
 
 
 def has_successful_builds(pull_request, job):
-    getattr(g, '_cache', {}).clear()
+    clear_g_cache()
     pr_map = all_open_prs()
     job_number = pr_map[pull_request][job]
     return (job_number is not None)
@@ -283,7 +282,7 @@ class TestGetSuccessfulJobShas(object):
 
 
 def build_check(session, project_name, sha):
-    getattr(g, '_cache', {}).clear()
+    clear_g_cache()
     pr = make_pr(session, project_name, sha)
     # project = session.query(Project).filter_by(name=project_name).one()
     # shas = {project_name: sha}

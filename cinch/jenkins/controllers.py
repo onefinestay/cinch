@@ -31,6 +31,11 @@ def g_cache(func):
     return wrapped
 
 
+def clear_g_cache():
+    """Test helper to clear the `g_cache`"""
+    getattr(g, '_cache', {}).clear()
+
+
 def get_or_create_build(job, build_number):
     """Return build by job and bubild_number. Create if missing
 

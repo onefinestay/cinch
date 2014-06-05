@@ -3,11 +3,13 @@ from __future__ import absolute_import
 from collections import namedtuple
 import logging
 from flask import request
+from nameko.standalone.events import event_dispatcher
 from sqlalchemy.orm.exc import NoResultFound
 
-from cinch import app, models
+from cinch import app, db
+from cinch.models import Project, PullRequest
 from cinch.check import check, CheckStatus
-from cinch.git import Repo
+from cinch.worker import get_nameko_config, MasterMoved, PullRequestMoved
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +107,7 @@ class GithubHookParser(object):
 
 def get_project_from_repo_info(repo_info):
     try:
-        return models.Project.query.filter_by(
+        return Project.query.filter_by(
             owner=repo_info.owner,
             name=repo_info.name,
         ).one()
@@ -143,18 +145,28 @@ def handle_push(parser):
     if project is None:
         return Responses.UNKNOWN_PROJECT
 
-    first = True
-    PullRequest = models.PullRequest
-    pull_requests = models.db.session.query(
+    pull_requests = db.session.query(
         PullRequest).filter(
             PullRequest.project == project,
             PullRequest.is_open,
         )
-    for pr in pull_requests:
-        set_relative_states(pr, fetch=first)
-        first = False
 
-    models.db.session.commit()
+    for pr in pull_requests:
+        pr.behind_master = None
+        pr.ahead_of_master = None
+        pr.is_mergeable = None
+        # TODO: pr.merge_head = None
+
+    db.session.commit()
+
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        event = MasterMoved(data={
+            'owner': project.owner,
+            'name': project.name,
+        })
+        dispatch(event)
+
     return Responses.MASTER_PUSH_OK
 
 
@@ -173,43 +185,32 @@ def handle_pull_request(parser):
         # to pass to the git repo.
         return Responses.NON_MASTER_PR
 
-    pr = models.PullRequest.query.get((pr_info.number, project.id))
+    pr = PullRequest.query.get((pr_info.number, project.id))
     if pr is None:
         # we need to initialise the pull request as it's the
         # first time we've heard of it
-        pr = models.PullRequest(
+        pr = PullRequest(
             number=pr_info.number,
             project=project,
             owner=repo_info.owner,
             title=pr_info.title,
             is_open=(pr_info.state == PULL_REQUEST_OPEN_STATE),
         )
-        models.db.session.add(pr)
+        db.session.add(pr)
 
     pr.head = pr_info.head
-    set_relative_states(pr)
-    models.db.session.commit()
+    # TODO: pr.merge_head = None
+    db.session.commit()
+
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        event = PullRequestMoved(data={
+            'owner': project.owner,
+            'name': project.name,
+            'number': pr.number,
+        })
+        dispatch(event)
     return Responses.PR_OK
-
-
-def set_relative_states(pr, fetch=True):
-    """Set values of states that are relative to the base branch"""
-
-    project = pr.project
-    git_repo = Repo.from_local_repo(project.owner, project.name)
-    if not git_repo.is_repo():
-        git_repo = Repo.setup_repo(project.owner, project.name)
-
-    if fetch:
-        git_repo.fetch()
-
-    # we currently assume that the base is master
-    behind, ahead = git_repo.compare_pr(pr.number)
-    is_mergeable = git_repo.is_mergeable(pr.number)
-
-    pr.behind_master = behind
-    pr.ahead_of_master = ahead
-    pr.is_mergeable = is_mergeable
 
 
 ## Checks

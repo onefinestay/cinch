@@ -25,9 +25,9 @@ class Project(db.Model):
 class PullRequest(db.Model):
     __tablename__ = "pull_requests"
 
-    number = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.Integer, primary_key=True, autoincrement=False)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
-                           primary_key=True)
+                           primary_key=True, autoincrement=False)
     head = db.Column(db.String(40), nullable=False)
     owner = db.Column(db.Text, nullable=False)
     title = db.Column(db.Text, nullable=False)

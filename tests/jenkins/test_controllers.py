@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from cinch.models import Project, PullRequest
 from cinch.jenkins.models import Job, BuildSha
 from cinch.jenkins.controllers import (
-    record_job_result, record_job_sha, _all_open_prs, get_successful_job_shas,
+    record_job_result, record_job_sha, all_open_prs, get_successful_job_shas,
     jenkins_check,
 )
 
@@ -33,7 +33,8 @@ class QueryCounter():
 
 
 def has_successful_builds(pull_request, job):
-    pr_map = _all_open_prs()
+    getattr(g, '_cache', {}).clear()
+    pr_map = all_open_prs()
     job_number = pr_map[pull_request][job]
     return (job_number is not None)
 

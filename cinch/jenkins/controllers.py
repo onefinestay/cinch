@@ -212,20 +212,6 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
 
 @g_cache
 def all_open_prs():
-    return _all_open_prs()
-
-# so we can test without caching
-def _all_open_prs():
-    """
-        TODO: update
-
-        For a given job and main project, look for builds that are
-            1. successful
-            2. match the head shas for the projects in that build (unless
-                overriden with branch_shas)
-
-    """
-
     job_master_shas = get_job_master_shas()
     successful_job_shas = get_successful_job_shas(job_master_shas)
 

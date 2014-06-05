@@ -200,17 +200,22 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
 
         for job in project.jobs:
             # take a copy of the master shas dict, and replace the shas for
-            # this pull request's project by the pull request head
+            # this pull request's project by the pull request head. we check
+            # for both the head and the merge_head, accepting a successful
+            # build of either as a success
             job_id = job.id
-            sha_dict = job_master_shas[job_id].copy()
-            sha_dict[project.id] = pr.head
-            shas = tuple(sha_dict.values())
+            head_sha_dict= job_master_shas[job_id].copy()
+            head_sha_dict[project.id] = pr.head
+            head_shas = tuple(head_sha_dict.values())
+            merge_head_sha_dict = job_master_shas[job_id].copy()
+            merge_head_sha_dict[project.id] = pr.merge_head
+            merge_head_shas = tuple(merge_head_sha_dict.values())
 
             successful_shas = successful_job_shas[job_id]
-            try:
-                pr_job_map[job_id] = successful_shas[shas]
-            except KeyError:
-                pr_job_map[job_id] = None
+            successful_job_id = successful_shas.get(head_shas)
+            if successful_job_id is None:
+                successful_job_id = successful_shas.get(merge_head_shas)
+            pr_job_map[job_id] = successful_job_id
 
         pr_map[pr] = pr_job_map
 

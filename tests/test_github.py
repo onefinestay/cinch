@@ -142,11 +142,17 @@ class TestPush(object):
 
     def test_master_with_open_prs(self, session, project, fake_repo, hook_post):
         pr1 = PullRequest(
-            project=project, head='sha1', owner='me', title='foo', is_open=True)
+            project=project, number=1, head='sha1', owner='me', title='foo',
+            is_open=True
+        )
         pr2 = PullRequest(
-            project=project, head='sha2', owner='me', title='foo', is_open=True)
+            project=project, number=2, head='sha2', owner='me', title='foo',
+            is_open=True
+        )
         pr3 = PullRequest(
-            project=project, head='sha2', owner='me', title='foo', is_open=False)
+            project=project, number=3, head='sha2', owner='me', title='foo',
+            is_open=False
+        )
         session.add(pr1)
         session.add(pr2)
         session.add(pr3)

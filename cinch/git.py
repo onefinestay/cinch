@@ -15,7 +15,7 @@ ORIGIN_REMOTE = '+refs/heads/*:refs/remotes/origin/*'
 # github exposes pull request heads and merge heads at these endpoints
 PULL_REQUEST_REMOTES = {
     'pr_head': '+refs/pull/*/head:refs/remotes/pr_head/*',
-    'pr_merge': '+refs/pull/*/merge:refs/remotes/pr_head/*',
+    'pr_merge': '+refs/pull/*/merge:refs/remotes/pr_merge/*',
 }
 
 _log = logging.getLogger(__name__)

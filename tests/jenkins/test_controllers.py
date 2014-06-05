@@ -41,7 +41,7 @@ def has_successful_builds(pull_request, job):
 def set_master(session, project_name, sha):
     project = session.query(Project).filter_by(name=project_name).one()
     project.master_sha = sha
-    session.commit()  # TODO: needed?
+
 
 def make_pr(session, project_name, sha):
     project = session.query(Project).filter_by(name=project_name).one()

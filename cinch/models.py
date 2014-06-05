@@ -1,5 +1,4 @@
 from cinch import db
-# db.engine.echo = True
 
 
 STRING_LENGTH = 200

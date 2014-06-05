@@ -181,11 +181,13 @@ def get_successful_job_shas(job_master_shas):
 
 def get_successful_pr_builds(job_master_shas, successful_job_shas):
     pr_map = {}
-    for pr in db.session.query(PullRequest
-        ).filter_by(is_open=True
+    pull_requests = db.session.query(
+        PullRequest
+        ).filter(PullRequest.is_open == True
         ).options(
             joinedload('project')
-    ):
+    )
+    for pr in pull_requests:
         project = pr.project
         pr_job_map = {}
 

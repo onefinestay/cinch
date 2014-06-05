@@ -5,7 +5,7 @@ import pytest
 
 from cinch import app
 from cinch.github import Responses
-from cinch.models import Project, Commit, PullRequest
+from cinch.models import Project, PullRequest
 
 URL = '/api/github/update'
 
@@ -109,18 +109,19 @@ class TestPush(object):
         assert res.data == Responses.MASTER_PUSH_OK
 
     def test_unseen_repo(self, fake_repo, session, project, hook_post):
-        sha1 = Commit(project=project, sha='1')
         pr1 = PullRequest(
-            project=project, head=sha1, owner='me', title='foo', is_open=True)
+            project=project, head='sha1', owner='me', title='foo', is_open=True)
         session.add(pr1)
         session.commit()
 
         is_repo = fake_repo.from_local_repo('mock_owner', 'mock_name').is_repo
-        setup_repo = fake_repo.setup_repo
-        setup_repo('mock_owner', 'mock_name').compare_pr.return_value = (
-            None, None)
-
         is_repo.return_value = False
+
+        setup_repo = fake_repo.setup_repo
+        repo = setup_repo('mock_owner', 'mock_name')
+        repo.compare_pr.return_value = (
+            None, None)
+        repo.is_mergeable.return_value = False
 
         data = {
             'repository': {
@@ -140,14 +141,18 @@ class TestPush(object):
 
 
     def test_master_with_open_prs(self, session, project, fake_repo, hook_post):
-        sha1 = Commit(project=project, sha='1')
-        sha2 = Commit(project=project, sha='2')
         pr1 = PullRequest(
-            project=project, head=sha1, owner='me', title='foo', is_open=True)
+            project=project, number=1, head='sha1', owner='me', title='foo',
+            is_open=True
+        )
         pr2 = PullRequest(
-            project=project, head=sha2, owner='me', title='foo', is_open=True)
+            project=project, number=2, head='sha2', owner='me', title='foo',
+            is_open=True
+        )
         pr3 = PullRequest(
-            project=project, head=sha2, owner='me', title='foo', is_open=False)
+            project=project, number=3, head='sha2', owner='me', title='foo',
+            is_open=False
+        )
         session.add(pr1)
         session.add(pr2)
         session.add(pr3)
@@ -162,11 +167,14 @@ class TestPush(object):
             },
             'ref': "refs/heads/master",
         }
+
+        repo = fake_repo.from_local_repo('owner', 'name')
+        repo.is_mergeable.return_value = False
+
         res = hook_post(data, 'push')
         assert res.status_code == 200
         assert res.data == Responses.MASTER_PUSH_OK
 
-        repo = fake_repo.from_local_repo('owner', 'name')
         assert repo.compare_pr.call_count == 2
         args1, _ = repo.compare_pr.call_args_list[0]
         args2, _ = repo.compare_pr.call_args_list[1]
@@ -183,7 +191,7 @@ class TestPullRequest(object):
         session.commit()
         return project
 
-    def test_new(self, session, hook_post):
+    def test_new(self, session, hook_post, fake_repo):
         data = {
             'repository': {
                 'name': 'my_name',
@@ -204,6 +212,8 @@ class TestPullRequest(object):
                 },
             },
         }
+        repo = fake_repo.from_local_repo('owner', 'name')
+        repo.is_mergeable.return_value = False
 
         assert session.query(PullRequest).count() == 0
 

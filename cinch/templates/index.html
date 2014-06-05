@@ -24,7 +24,7 @@
                 </td>
                 <td>
                     <a href="https://github.com/organization/project/commit/sha_hash">
-                        {{ pull.head_commit }}
+                        {{ pull.head }}
                     </a>
                 </td>
                 <td>
@@ -80,8 +80,8 @@
         <div class="panel-body">
             <p class="pr_description">{{ pull.title }}</p>
             <span class="pr_owner">{{ pull.owner }}</span><span class="pr_age"> opened 15 days ago</span><br />
-            <a class="sha_hash" href="https://github.com/{{ pull.project.owner }}/{{ pull.project.name }}/commit/{{ pull.head_commit }}">
-                <label>SHA:</label> {{ pull.head_commit[:9] }}
+            <a class="sha_hash" href="https://github.com/{{ pull.project.owner }}/{{ pull.project.name }}/commit/{{ pull.head }}">
+                <label>SHA:</label> {{ pull.head[:9] }}
             </a>
             <div class="check_statuses">
                 {% for check in pull.checks %}

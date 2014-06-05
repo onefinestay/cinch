@@ -38,16 +38,6 @@ class Responses(object):
     PR_OK = "Pull request updated"
 
 
-def get_or_create_commit(sha, project):
-    commit = models.Commit.query.get(sha)
-    if commit is None:
-        commit = models.Commit(sha=sha, project=project)
-        models.db.session.add(commit)
-        models.db.session.flush()
-
-    return commit
-
-
 class GithubHookParser(object):
     """Parses data from a Flask request object from a github webhook
     """
@@ -183,7 +173,6 @@ def handle_pull_request(parser):
         # to pass to the git repo.
         return Responses.NON_MASTER_PR
 
-    commit = get_or_create_commit(pr_info.head, project)
     pr = models.PullRequest.query.get((pr_info.number, project.id))
     if pr is None:
         # we need to initialise the pull request as it's the
@@ -197,7 +186,7 @@ def handle_pull_request(parser):
         )
         models.db.session.add(pr)
 
-    pr.head_commit = commit.sha
+    pr.head = pr_info.head
     set_relative_states(pr)
     models.db.session.commit()
     return Responses.PR_OK

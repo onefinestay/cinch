@@ -13,7 +13,10 @@ GITHUB_URL_TEMPLATE = "git@github.com:{}/{}.git"
 
 ORIGIN_REMOTE = '+refs/heads/*:refs/remotes/origin/*'
 # github exposes pull request heads and merge heads at these endpoints
-PULL_REQUEST_REMOTE_TEMPLATE = '+refs/pull/*/head:refs/remotes/{}/*'
+PULL_REQUEST_REMOTES = {
+    'pr_head': '+refs/pull/*/head:refs/remotes/pr_head/*',
+    'pr_merge': '+refs/pull/*/merge:refs/remotes/pr_head/*',
+}
 
 _log = logging.getLogger(__name__)
 
@@ -73,8 +76,7 @@ class Repo(object):
             ORIGIN_REMOTE,
         )
         # add remotes for github pull requests heads and merge heads
-        for remote_name in ['pr_head', 'pr_merge']:
-            spec = PULL_REQUEST_REMOTE_TEMPLATE.format(remote_name)
+        for remote_name, spec in PULL_REQUEST_REMOTES.items():
             add_custom_remote(
                 repo,
                 remote_name,

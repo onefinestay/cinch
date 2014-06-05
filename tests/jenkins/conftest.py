@@ -23,7 +23,8 @@ def fixtures(session):
         - app: test app against library
     """
 
-    # need to make sure all conftests are run before importing the main module
+    # need to make sure main conftest is run before importing the cinch module,
+    # since it sets the db uri based on pytest args
     from cinch.models import Project
     from cinch.jenkins.models import Job
 

@@ -112,15 +112,16 @@ def pull_request_status(project_owner, project_name, pr_number):
         job_builds[job] = [
             (result[0], result[1], result[2:])
             for result in query.order_by(
-                    desc(base_query.c.build_number)
-                ).values(
-                    base_query.c.build_number,
-                    base_query.c.success,
-                    *sha_columns
-                )
+                desc(base_query.c.build_number)
+            ).values(
+                base_query.c.build_number,
+                base_query.c.success,
+                *sha_columns
+            )
         ]
 
-    return render_template('jenkins/pull_request_status.html',
+    return render_template(
+        'jenkins/pull_request_status.html',
         pull_request=pull_request,
         jobs=jobs,
         job_builds=job_builds,

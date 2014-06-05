@@ -213,7 +213,7 @@ def handle_pull_request(parser):
     return Responses.PR_OK
 
 
-## Checks
+# Checks
 
 @check
 def check_strictly_ahead(pull):
@@ -222,9 +222,15 @@ def check_strictly_ahead(pull):
         return CheckStatus(label='Branch is up to date', status=True)
     elif pull.ahead_of_master > 0 and pull.behind_master > 0:
         # pull request is ahead of master and up to date with the latest head
-        return CheckStatus(label='Branch is not up to date with master', status=False)
+        return CheckStatus(
+            label='Branch is not up to date with master',
+            status=False,
+        )
     else:
-        return CheckStatus(label='Branch has been already merged', status=False)
+        return CheckStatus(
+            label='Branch has been already merged',
+            status=False,
+        )
 
 
 @check

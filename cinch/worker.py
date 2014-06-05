@@ -98,6 +98,7 @@ def get_nameko_config():
         MAX_WORKERS_CONFIG_KEY: 1,
     }
 
+
 def run_worker():
     config = get_nameko_config()
 

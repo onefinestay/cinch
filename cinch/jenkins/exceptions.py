@@ -4,5 +4,3 @@ class UnknownProject(LookupError):
 
 class UnknownJob(LookupError):
     pass
-
-

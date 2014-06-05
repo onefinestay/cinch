@@ -123,7 +123,7 @@ class Repo(object):
 
     def compare(self, base, branch):
         """Count number of commits in branch that are not in base"""
-        branches =  '{}..{}'
+        branches = '{}..{}'
         branch_arg = branches.format(base, branch)
         cmd = ['rev-list',  '--count', branch_arg]
         output = self.cmd(cmd)

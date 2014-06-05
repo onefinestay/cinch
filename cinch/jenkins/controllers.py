@@ -72,7 +72,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
 
     try:
         project = session.query(Project).filter(
-            Project.owner==project_owner, Project.name==project_name
+            Project.owner == project_owner, Project.name == project_name
         ).one()
     except NoResultFound:
         raise UnknownProject(project_owner, project_name)
@@ -133,16 +133,17 @@ def get_job_build_query(job_id, project_ids, successful_only=True):
     session = db.session
     base_query = session.query(Build.id, Build.build_number, Build.success)
     if successful_only:
-        base_query = base_query.filter(Build.success==True)
+        base_query = base_query.filter(Build.success == True)
     base_query = base_query.join(Job).filter(
-        Job.id==job_id).subquery(name='basequery')
+        Job.id == job_id).subquery(name='basequery')
     query = db.session.query(base_query)
     aliases = []
 
     for project_id in project_ids:
         subquery_alias = session.query(
             BuildSha.build_id, BuildSha.sha
-            ).filter(BuildSha.project_id == project_id
+            ).filter(
+                BuildSha.project_id == project_id
             ).subquery(name="project_{}_commits".format(project_id))
         aliases.append(subquery_alias)
 
@@ -188,7 +189,8 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
     pr_map = {}
     pull_requests = db.session.query(
         PullRequest
-        ).filter(PullRequest.is_open == True
+        ).filter(
+            PullRequest.is_open == True
         ).options(
             joinedload('project')
     )
@@ -221,6 +223,7 @@ def all_open_prs():
     successful_job_shas = get_successful_job_shas(job_master_shas)
 
     return get_successful_pr_builds(job_master_shas, successful_job_shas)
+
 
 @check
 def jenkins_check(pull_request):

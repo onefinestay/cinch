@@ -29,6 +29,7 @@ class PullRequest(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'),
                            primary_key=True, autoincrement=False)
     head = db.Column(db.String(40), nullable=False)
+    merge_head = db.Column(db.String(40), nullable=True)
     owner = db.Column(db.Text, nullable=False)
     title = db.Column(db.Text, nullable=False)
     ahead_of_master = db.Column(db.Integer, nullable=True)

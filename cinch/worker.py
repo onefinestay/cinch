@@ -31,16 +31,18 @@ def set_relative_states(pr, fetch=True):
     # we currently assume that the base is master
     behind, ahead = git_repo.compare_pr(pr.number)
     is_mergeable = git_repo.is_mergeable(pr.number)
+    merge_head = git_repo.merge_head(pr.number)
 
     pr.behind_master = behind
     pr.ahead_of_master = ahead
     pr.is_mergeable = is_mergeable
+    pr.merge_head = merge_head
 
 
 class RepoWorker(object):
     name = 'cinch'
 
-    @event_handler('cinch', MasterMoved)
+    @event_handler('cinch', MasterMoved, reliable_delivery=True)
     def master_moved(self, event_data):
         project_owner = event_data['owner']
         project_name = event_data['name']
@@ -59,7 +61,7 @@ class RepoWorker(object):
 
         db.session.commit()
 
-    @event_handler('cinch', PullRequestMoved)
+    @event_handler('cinch', PullRequestMoved, reliable_delivery=True)
     def pull_request_moved(self, event_data):
         project_owner = event_data['owner']
         project_name = event_data['name']

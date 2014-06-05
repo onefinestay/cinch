@@ -155,7 +155,7 @@ def handle_push(parser):
         pr.behind_master = None
         pr.ahead_of_master = None
         pr.is_mergeable = None
-        # TODO: pr.merge_head = None
+        pr.merge_head = None
 
     db.session.commit()
 
@@ -199,7 +199,7 @@ def handle_pull_request(parser):
         db.session.add(pr)
 
     pr.head = pr_info.head
-    # TODO: pr.merge_head = None
+    pr.merge_head = None
     db.session.commit()
 
     config = get_nameko_config()

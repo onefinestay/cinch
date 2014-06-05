@@ -121,6 +121,9 @@ class Repo(object):
     def _pull_request_ref(self, pull_request_number):
         return 'pr_head/{}'.format(pull_request_number)
 
+    def _pull_request_merge_ref(self, pull_request_number):
+        return 'pr_merge/{}'.format(pull_request_number)
+
     def compare(self, base, branch):
         """Count number of commits in branch that are not in base"""
         branches = '{}..{}'
@@ -165,3 +168,8 @@ class Repo(object):
             if line == sentinel:
                 return False
         return True
+
+    def merge_head(self, pull_request_number):
+        pr_merge_ref = self._pull_request_merge_ref(pull_request_number)
+        sha = self.cmd(['rev-parse', pr_merge_ref])
+        return sha

@@ -39,3 +39,8 @@ def test_fetch(repo):
 
 def test_is_mergeable(repo):
     assert repo.is_mergeable(1)
+
+
+def test_merge_head(repo):
+    merge_head = repo.merge_head(1)
+    assert merge_head is not None

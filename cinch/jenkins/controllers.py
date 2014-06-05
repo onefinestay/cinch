@@ -250,12 +250,12 @@ def jenkins_check(pull_request):
     check_statuses = []
 
     for job in sorted(jobs, key=lambda j: j.name):
-        job_number = pr_map[pull_request][job.id]
-        status = job_number is not None
-        if job_number is None:
+        build_number = pr_map[pull_request][job.id]
+        status = build_number is not None
+        if build_number is None:
             label = "Jenkins: {}".format(job.name)
         else:
-            label = "Jenkins: {} [{}]".format(job.name, job_number)
+            label = "Jenkins: {} [{}]".format(job.name, build_number)
         check_statuses.append(
             CheckStatus(
                 label=label,

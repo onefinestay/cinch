@@ -1,9 +1,5 @@
 import pytest
 
-from cinch.models import Project
-from cinch.jenkins.models import Job
-
-
 @pytest.fixture
 def fixtures(session):
     """
@@ -26,6 +22,10 @@ def fixtures(session):
 
         - app: test app against library
     """
+
+    # need to make sure all conftests are run before importing the main module
+    from cinch.models import Project
+    from cinch.jenkins.models import Job
 
     # projects
     library = Project(name="library", owner='owner')

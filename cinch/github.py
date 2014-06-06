@@ -18,7 +18,8 @@ PULL_REQUEST_OPEN_STATE = 'open'
 
 RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
 PullRequestInfo = namedtuple(
-    'PullRequestInfo', ['number', 'title', 'head', 'state', 'base_ref'])
+    'PullRequestInfo',
+    ['number', 'title', 'head', 'user', 'state', 'base_ref'])
 
 
 class HookEvents(object):
@@ -80,11 +81,13 @@ class GithubHookParser(object):
         head = pr_info['head']['sha']
         state = pr_info['state']
         base_ref = pr_info['base']['ref']
+        user = pr_info['user']['login']
 
         return PullRequestInfo(
             number=pr_number,
             title=title,
             head=head,
+            user=user,
             state=state,
             base_ref=base_ref,
         )
@@ -192,7 +195,7 @@ def handle_pull_request(parser):
         pr = PullRequest(
             number=pr_info.number,
             project=project,
-            owner=repo_info.owner,
+            owner=pr_info.user,
             title=pr_info.title,
             is_open=(pr_info.state == PULL_REQUEST_OPEN_STATE),
         )

@@ -39,3 +39,9 @@ def test_fetch(repo):
 
 def test_is_mergeable(repo):
     assert repo.is_mergeable(1)
+
+
+def test_merge_head(repo):
+    # can't reliably test the result of this, but at least calling it shouldn't
+    # raise any exceptions
+    repo.merge_head(1)

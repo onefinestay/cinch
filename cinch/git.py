@@ -13,7 +13,10 @@ GITHUB_URL_TEMPLATE = "git@github.com:{}/{}.git"
 
 ORIGIN_REMOTE = '+refs/heads/*:refs/remotes/origin/*'
 # github exposes pull request heads and merge heads at these endpoints
-PULL_REQUEST_REMOTE_TEMPLATE = '+refs/pull/*/head:refs/remotes/{}/*'
+PULL_REQUEST_REMOTES = {
+    'pr_head': '+refs/pull/*/head:refs/remotes/pr_head/*',
+    'pr_merge': '+refs/pull/*/merge:refs/remotes/pr_merge/*',
+}
 
 _log = logging.getLogger(__name__)
 
@@ -73,8 +76,7 @@ class Repo(object):
             ORIGIN_REMOTE,
         )
         # add remotes for github pull requests heads and merge heads
-        for remote_name in ['pr_head', 'pr_merge']:
-            spec = PULL_REQUEST_REMOTE_TEMPLATE.format(remote_name)
+        for remote_name, spec in PULL_REQUEST_REMOTES.items():
             add_custom_remote(
                 repo,
                 remote_name,
@@ -121,9 +123,12 @@ class Repo(object):
     def _pull_request_ref(self, pull_request_number):
         return 'pr_head/{}'.format(pull_request_number)
 
+    def _pull_request_merge_ref(self, pull_request_number):
+        return 'pr_merge/{}'.format(pull_request_number)
+
     def compare(self, base, branch):
         """Count number of commits in branch that are not in base"""
-        branches =  '{}..{}'
+        branches = '{}..{}'
         branch_arg = branches.format(base, branch)
         cmd = ['rev-list',  '--count', branch_arg]
         output = self.cmd(cmd)
@@ -165,3 +170,8 @@ class Repo(object):
             if line == sentinel:
                 return False
         return True
+
+    def merge_head(self, pull_request_number):
+        pr_merge_ref = self._pull_request_merge_ref(pull_request_number)
+        sha = self.cmd(['rev-parse', pr_merge_ref])
+        return sha

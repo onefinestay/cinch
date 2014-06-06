@@ -6,21 +6,20 @@ import pytest
 from cinch import app
 from cinch.github import Responses
 from cinch.models import Project, PullRequest
+from cinch.worker import MasterMoved, PullRequestMoved
 
 URL = '/api/github/update'
-
-
-@pytest.yield_fixture(autouse=True)
-def fake_repo():
-    with patch('cinch.github.Repo', autospec=True) as Repo:
-        Repo.from_local_repo('owner', 'name').compare_pr.return_value = (
-            None, None)
-        yield Repo
 
 
 @pytest.fixture(autouse=True)
 def propagate_exceptions():
     app.config['PROPAGATE_EXCEPTIONS'] = True
+
+
+@pytest.yield_fixture(autouse=True)
+def mock_dispatch():
+    with patch('cinch.github.event_dispatcher') as dispatcher:
+        yield dispatcher().__enter__()
 
 
 @pytest.fixture
@@ -80,7 +79,7 @@ class TestPush(object):
         session.commit()
         return project
 
-    def test_non_master(self, hook_post):
+    def test_non_master(self, hook_post, mock_dispatch):
         data = {
             'repository': {
                 'name': 'my_name',
@@ -93,94 +92,38 @@ class TestPush(object):
         res = hook_post(data, 'push')
         assert res.status_code == 200
         assert res.data == Responses.NON_MASTER_PUSH
+        assert mock_dispatch.call_count == 0
 
-    def test_master(self, hook_post):
-        data = {
-            'repository': {
-                'name': 'my_name',
-                'owner': {
-                    'name': 'my_owner',
-                },
-            },
-            'ref': "refs/heads/master",
-        }
-        res = hook_post(data, 'push')
-        assert res.status_code == 200
-        assert res.data == Responses.MASTER_PUSH_OK
-
-    def test_unseen_repo(self, fake_repo, session, project, hook_post):
-        pr1 = PullRequest(
-            project=project, head='sha1', owner='me', title='foo', is_open=True)
-        session.add(pr1)
-        session.commit()
-
-        is_repo = fake_repo.from_local_repo('mock_owner', 'mock_name').is_repo
-        is_repo.return_value = False
-
-        setup_repo = fake_repo.setup_repo
-        repo = setup_repo('mock_owner', 'mock_name')
-        repo.compare_pr.return_value = (
-            None, None)
-        repo.is_mergeable.return_value = False
-
-        data = {
-            'repository': {
-                'name': 'my_name',
-                'owner': {
-                    'name': 'my_owner',
-                },
-            },
-            'ref': "refs/heads/master",
-        }
-        hook_post(data, 'push')
-        assert setup_repo.call_count == 2  # once to set up mock, once in code
-        args1, _ = setup_repo.call_args_list[0]
-        args2, _ = setup_repo.call_args_list[1]
-        assert args1 == ('mock_owner', 'mock_name')
-        assert args2 == ('my_owner', 'my_name')
-
-
-    def test_master_with_open_prs(self, session, project, fake_repo, hook_post):
-        pr1 = PullRequest(
+    def test_master(self, session, project, hook_post, mock_dispatch):
+        pr = PullRequest(
             project=project, number=1, head='sha1', owner='me', title='foo',
-            is_open=True
+            ahead_of_master=1, behind_master=2, is_open=True,
         )
-        pr2 = PullRequest(
-            project=project, number=2, head='sha2', owner='me', title='foo',
-            is_open=True
-        )
-        pr3 = PullRequest(
-            project=project, number=3, head='sha2', owner='me', title='foo',
-            is_open=False
-        )
-        session.add(pr1)
-        session.add(pr2)
-        session.add(pr3)
+        session.add(pr)
         session.commit()
-
         data = {
             'repository': {
-                'name': 'my_name',
+                'name': project.name,
                 'owner': {
-                    'name': 'my_owner',
+                    'name': project.owner,
                 },
             },
             'ref': "refs/heads/master",
         }
-
-        repo = fake_repo.from_local_repo('owner', 'name')
-        repo.is_mergeable.return_value = False
-
         res = hook_post(data, 'push')
         assert res.status_code == 200
         assert res.data == Responses.MASTER_PUSH_OK
+        assert mock_dispatch.call_count == 1
+        (event,) = mock_dispatch.call_args[0]
+        assert isinstance(event, MasterMoved)
+        assert event.data == {
+            'owner': project.owner,
+            'name': project.name,
+        }
 
-        assert repo.compare_pr.call_count == 2
-        args1, _ = repo.compare_pr.call_args_list[0]
-        args2, _ = repo.compare_pr.call_args_list[1]
-        assert args1 == (1,)
-        assert args2 == (2,)
-        assert repo.fetch.call_count == 1  # not once per pr
+        pr_loaded = session.query(PullRequest).one()
+        assert pr_loaded.ahead_of_master is None
+        assert pr_loaded.behind_master is None
 
 
 class TestPullRequest(object):
@@ -191,7 +134,7 @@ class TestPullRequest(object):
         session.commit()
         return project
 
-    def test_new(self, session, hook_post, fake_repo):
+    def test_new(self, session, hook_post, mock_dispatch):
         data = {
             'repository': {
                 'name': 'my_name',
@@ -212,9 +155,6 @@ class TestPullRequest(object):
                 },
             },
         }
-        repo = fake_repo.from_local_repo('owner', 'name')
-        repo.is_mergeable.return_value = False
-
         assert session.query(PullRequest).count() == 0
 
         res = hook_post(data, 'pull_request')
@@ -222,8 +162,16 @@ class TestPullRequest(object):
         assert res.data == Responses.PR_OK
 
         assert session.query(PullRequest).count() == 1
+        assert mock_dispatch.call_count == 1
+        (event,) = mock_dispatch.call_args[0]
+        assert isinstance(event, PullRequestMoved)
+        assert event.data == {
+            'owner': 'my_owner',
+            'name': 'my_name',
+            'number': 1,
+        }
 
-    def test_ignore_not_against_master(self, session, hook_post):
+    def test_ignore_not_against_master(self, session, hook_post, mock_dispatch):
         data = {
             'repository': {
                 'name': 'my_name',
@@ -251,8 +199,9 @@ class TestPullRequest(object):
         assert res.data == Responses.NON_MASTER_PR
 
         assert session.query(PullRequest).count() == 0
+        assert mock_dispatch.call_count == 0
 
-    def test_unknown_project(self, hook_post, session):
+    def test_unknown_project(self, hook_post, session, mock_dispatch):
         data = {
             'repository': {
                 'name': 'unknown',
@@ -277,3 +226,4 @@ class TestPullRequest(object):
         res = hook_post(data, 'pull_request')
         assert res.data == Responses.UNKNOWN_PROJECT
         assert session.query(PullRequest).count() == 0
+        assert mock_dispatch.call_count == 0

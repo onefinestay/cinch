@@ -7,6 +7,7 @@
 </h1>
 
 <h3>Head: <code>{{ pull_request.head }}</code></h3>
+<h3>Merge head: <code>{{ pull_request.merge_head }}</code></h3>
 
 {% for job in jobs %}
 <h2>Job: <tt>{{ job.name }}</tt></h2>

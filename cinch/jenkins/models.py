@@ -16,7 +16,8 @@ class Job(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
-    projects = db.relationship('Project', secondary=job_projects, backref='jobs')
+    projects = db.relationship(
+        'Project', secondary=job_projects, backref='jobs')
 
     def ordered_projects(self):
         return sorted(list(self.projects), key=lambda p: p.name)

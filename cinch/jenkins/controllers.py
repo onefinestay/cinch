@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from collections import OrderedDict
 
 from flask import url_for, g
+from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -10,6 +11,10 @@ from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
 from .models import Job, Build, BuildSha
 from .exceptions import UnknownProject, UnknownJob
+
+
+# for pep8
+NULL = None
 
 
 def g_cache(func):
@@ -72,7 +77,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
 
     try:
         project = session.query(Project).filter(
-            Project.owner==project_owner, Project.name==project_name
+            Project.owner == project_owner, Project.name == project_name
         ).one()
     except NoResultFound:
         raise UnknownProject(project_owner, project_name)
@@ -133,16 +138,17 @@ def get_job_build_query(job_id, project_ids, successful_only=True):
     session = db.session
     base_query = session.query(Build.id, Build.build_number, Build.success)
     if successful_only:
-        base_query = base_query.filter(Build.success==True)
+        base_query = base_query.filter(Build.success == True)
     base_query = base_query.join(Job).filter(
-        Job.id==job_id).subquery(name='basequery')
+        Job.id == job_id).subquery(name='basequery')
     query = db.session.query(base_query)
     aliases = []
 
     for project_id in project_ids:
         subquery_alias = session.query(
             BuildSha.build_id, BuildSha.sha
-            ).filter(BuildSha.project_id == project_id
+            ).filter(
+                BuildSha.project_id == project_id
             ).subquery(name="project_{}_commits".format(project_id))
         aliases.append(subquery_alias)
 
@@ -152,6 +158,7 @@ def get_job_build_query(job_id, project_ids, successful_only=True):
         )
 
     sha_columns = [alias.c.sha for alias in aliases]
+    query = query.filter(and_(column != NULL for column in sha_columns))
 
     return query, base_query, sha_columns
 
@@ -188,7 +195,8 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
     pr_map = {}
     pull_requests = db.session.query(
         PullRequest
-        ).filter(PullRequest.is_open == True
+        ).filter(
+            PullRequest.is_open == True
         ).options(
             joinedload('project')
     )
@@ -198,17 +206,22 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
 
         for job in project.jobs:
             # take a copy of the master shas dict, and replace the shas for
-            # this pull request's project by the pull request head
+            # this pull request's project by the pull request head. we check
+            # for both the head and the merge_head, accepting a successful
+            # build of either as a success
             job_id = job.id
-            sha_dict = job_master_shas[job_id].copy()
-            sha_dict[project.id] = pr.head
-            shas = tuple(sha_dict.values())
+            head_sha_dict = job_master_shas[job_id].copy()
+            head_sha_dict[project.id] = pr.head
+            head_shas = tuple(head_sha_dict.values())
+            merge_head_sha_dict = job_master_shas[job_id].copy()
+            merge_head_sha_dict[project.id] = pr.merge_head
+            merge_head_shas = tuple(merge_head_sha_dict.values())
 
             successful_shas = successful_job_shas[job_id]
-            try:
-                pr_job_map[job_id] = successful_shas[shas]
-            except KeyError:
-                pr_job_map[job_id] = None
+            successful_job_id = successful_shas.get(head_shas)
+            if successful_job_id is None:
+                successful_job_id = successful_shas.get(merge_head_shas)
+            pr_job_map[job_id] = successful_job_id
 
         pr_map[pr] = pr_job_map
 
@@ -221,6 +234,7 @@ def all_open_prs():
     successful_job_shas = get_successful_job_shas(job_master_shas)
 
     return get_successful_pr_builds(job_master_shas, successful_job_shas)
+
 
 @check
 def jenkins_check(pull_request):

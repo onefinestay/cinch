@@ -284,8 +284,6 @@ class TestGetSuccessfulJobShas(object):
 def build_check(session, project_name, sha):
     clear_g_cache()
     pr = make_pr(session, project_name, sha)
-    # project = session.query(Project).filter_by(name=project_name).one()
-    # shas = {project_name: sha}
     return all(check.status for check in jenkins_check(pr))
 
 
@@ -320,3 +318,19 @@ def test_check_no_jobs(session, app_context):
     session.commit()
 
     assert build_check(session, 'foo', 'sha')
+
+
+# regression test
+def test_dont_match_if_merge_head_is_none(session, fixtures, app_context):
+    # no shas recorded
+    record_job_result('library_unit', 1, True, "passed")
+
+    clear_g_cache()
+    pr = make_pr(session, 'library', 'sha')
+    pr.merge_head = None
+
+    statuses = [
+        check.status for check in jenkins_check(pr)
+        if 'library_unit' in check.label
+    ]
+    assert statuses == [False]

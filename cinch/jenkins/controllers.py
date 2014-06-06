@@ -210,7 +210,7 @@ def get_successful_pr_builds(job_master_shas, successful_job_shas):
             # for both the head and the merge_head, accepting a successful
             # build of either as a success
             job_id = job.id
-            head_sha_dict= job_master_shas[job_id].copy()
+            head_sha_dict = job_master_shas[job_id].copy()
             head_sha_dict[project.id] = pr.head
             head_shas = tuple(head_sha_dict.values())
             merge_head_sha_dict = job_master_shas[job_id].copy()

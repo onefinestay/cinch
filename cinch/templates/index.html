@@ -71,29 +71,10 @@
 <!-- Grid of ordered pull requests -->
 <div id="pr-container">
     {% for pull in pull_requests %}
-    <div data-gh-user="{{ pull.owner }}" data-project="{{ pull.project.name }}" class="col-md-3 panel panel-default panel-headed pull_request">
-        <div class="panel-heading pr_heading">
-            <a href="https://github.com/{{ pull.project.owner }}/{{ pull.project.name }}/pull/{{ pull.number }}">
-                {{ pull.project.name }}/{{ pull.number }}
-            </a>
+        <div data-gh-user="{{ pull.owner }}" data-project="{{pull.project.owner}}/{{ pull.project.name }}" class="col-md-3 panel panel-default panel-headed pull_request">
+            {% include "pull_request_checks.html" %}
         </div>
-        <div class="panel-body">
-            <p class="pr_description">{{ pull.title }}</p>
-            <span class="pr_owner">{{ pull.owner }}</span><span class="pr_age"> opened 15 days ago</span><br />
-            <a class="sha_hash" href="https://github.com/{{ pull.project.owner }}/{{ pull.project.name }}/commit/{{ pull.head }}">
-                <label>SHA:</label> {{ pull.head[:9] }}
-            </a>
-            <div class="check_statuses">
-                {% for check in pull.checks %}
-                <a href="{{ check.url }}" title="{{ check.verbose_name }}" class="label label-{{ check.status|status_label }}">{{ check.label }}</a>
-                {% endfor %}
-                <span  class="pull-right">
-                    <span class="badge badge-{{ pull.sync_label }}">+ {{ pull.ahead_of_master }}</span>
-                    <span class="badge badge-{{ pull.sync_label }}">- {{ pull.behind_master }}</span>
-                </span>
-            </div>
-        </div>
-    </div>
+
     {% endfor %}
 </div><!-- close pr-container div -->
 {% endblock %}

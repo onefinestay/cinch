@@ -262,7 +262,7 @@ def jenkins_check(pull_request):
         if build_number is None:
             label = "Jenkins: {}".format(job.name)
         else:
-            label = "Jenkins: {} [{}]".format(job.name, build_number)
+            label = "Jenkins: {}: {}".format(job.name, build_number)
         check_statuses.append(
             CheckStatus(
                 label=label,

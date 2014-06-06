@@ -6,7 +6,7 @@ import pytest
 from cinch import app
 from cinch.github import Responses
 from cinch.models import Project, PullRequest
-from cinch.events import MasterMoved, PullRequestMoved
+from cinch.worker import MasterMoved, PullRequestMoved
 
 URL = '/api/github/update'
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from cinch import app, db
 from cinch.models import Project, PullRequest
 from cinch.check import check, CheckStatus
-from cinch.events import MasterMoved, PullRequestMoved, get_nameko_config
+from cinch.worker import MasterMoved, PullRequestMoved, get_nameko_config
 
 logger = logging.getLogger(__name__)
 

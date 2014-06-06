@@ -1,20 +1,66 @@
 """Nameko worker for async handling of updates"""
 
-import eventlet
-eventlet.monkey_patch()
-
 import logging
 
-from nameko.events import event_handler
-from nameko.runners import ServiceRunner
+from nameko.containers import MAX_WORKERS_CONFIG_KEY
+from nameko.events import Event, event_handler
+from nameko.messaging import AMQP_URI_CONFIG_KEY
 
 from cinch import db
-from cinch.events import MasterMoved, PullRequestMoved, get_nameko_config
 from cinch.git import Repo
 from cinch.models import Project, PullRequest
 
 
 _logger = logging.getLogger(__name__)
+
+
+from cinch import app
+
+
+class MasterMoved(Event):
+    """ The master branch for this project has moved. Reset e.g. merge head,
+    mergeable and ahead/behind status for all pull requests for this project.
+
+    :Event data:
+        owner : str
+            Project owner
+        name : str
+            Project name
+    """
+
+    type = 'master_moved'
+
+
+class PullRequestMoved(Event):
+    """ This pull request has moved. Reset e.g. merge head, mergeable and
+    ahead/behind status.
+
+    :Event data:
+        owner : str
+            Project owner
+        name : str
+            Project name
+        number : int
+            Pull request number
+    """
+
+    type = 'pull_request_moved'
+
+
+def get_nameko_config():
+    amqp_uri = app.config.get('NAMEKO_AMQP_URI')
+
+    if not amqp_uri:
+        raise RuntimeError(
+            'NAMEKO_AMQP_URI must be configured in order to run this worker'
+        )
+
+    return {
+        AMQP_URI_CONFIG_KEY: amqp_uri,
+
+        # we're not threadsafe, but don't need concurrency, only async
+        MAX_WORKERS_CONFIG_KEY: 1,
+    }
 
 
 def set_relative_states(pr, fetch=True):
@@ -74,17 +120,3 @@ class RepoWorker(object):
                 PullRequest.number == number,
             ).one()
         set_relative_states(pull_request)
-
-
-def run_worker():
-    config = get_nameko_config()
-
-    service_runner = ServiceRunner(config)
-    service_runner.add_service(RepoWorker)
-
-    service_runner.start()
-    service_runner.wait()
-
-
-if __name__ == '__main__':
-    run_worker()

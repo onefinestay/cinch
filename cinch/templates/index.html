@@ -10,26 +10,28 @@
         <table id="ready_pulls">
             <tr>
                 <th>Project</th>
-                <th>Pull ID</th>
+                <th>Pull request</th>
                 <th>SHA</th>
                 <th>Check Statuses</th>
             </tr>
             {% for pull in ready_pull_requests %}
+                {% set p_owner = pull.project.owner %}
+                {% set p_name = pull.project.name %}
+
             <tr class="ready_pull">
-                <td>{{ pull.project.name }}</td>
+                <td>{{p_owner}}/{{ p_name }}</td>
                 <td>
-                    <a href="https://github.com/organization/project/pull/00">
-                        {{ pull.number }}
+                    <a href="https://github.com/{{p_owner}}/{{p_name}}/pull/{{pull.number}}">
+                        {{ pull.number }}: {{ pull.title }}
                     </a>
                 </td>
                 <td>
-                    <a href="https://github.com/organization/project/commit/sha_hash">
-                        {{ pull.head }}
+                    <a href="https://github.com/{{p_owner}}/{{p_name}}/commit/{{pull.head}}">
+                        {{ pull.head[:6] }}
                     </a>
                 </td>
                 <td>
-                    <span class="badge badge-{{ pull.sync_label }}">+ {{ ahead_of_master }}</span>
-                    <span class="badge badge-{{ pull.sync_label }}">- {{ behind_master }}</span>
+                    <span class="badge badge-success">OK</span> <a href="{{ pull.url }}">Details</a>
                     {% for check in pull.checks %}
                     <span class="label label-success">{{ check.name }}</span>
                     {% endfor %}
@@ -59,8 +61,8 @@
                     All
                 </a></li>
                 {% for project in projects %}
-                    <li><a data-projectname="{{project.name}}" href="#" class="filter-project">
-                        {{ project.name }}
+                    <li><a data-projectname="{{project.owner}}/{{project.name}}" href="#" class="filter-project">
+                        {{project.owner}}/{{ project.name }}
                     </a></li>
                 {% endfor %}
             </ul>

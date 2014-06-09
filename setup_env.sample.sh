@@ -12,6 +12,9 @@ export CINCH_GITHUB_TOKEN=
 # see http://flask.pocoo.org/docs/quickstart/#sessions
 export CINCH_SECRET_KEY=
 
+# For the nameko worker
+export CINCH_NAMEKO_AMQP_URI=
+
 
 ## optional configuration
 

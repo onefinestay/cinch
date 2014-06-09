@@ -1,181 +1,219 @@
 from __future__ import absolute_import
 
-import json
+from collections import namedtuple
 import logging
 from flask import request
-from github import Github, UnknownObjectException
+from nameko.standalone.events import event_dispatcher
+from sqlalchemy.orm.exc import NoResultFound
 
-from cinch import app, models
+from cinch import app, db
+from cinch.models import Project, PullRequest
 from cinch.check import check, CheckStatus
+from cinch.worker import MasterMoved, PullRequestMoved, get_nameko_config
 
 logger = logging.getLogger(__name__)
 
 MASTER_REF = 'refs/heads/master'
+PULL_REQUEST_OPEN_STATE = 'open'
+
+RepoInfo = namedtuple('RepoInfo', ['owner', 'name'])
+PullRequestInfo = namedtuple(
+    'PullRequestInfo', ['number', 'title', 'head', 'state', 'base_ref'])
 
 
-def get_or_create_commit(sha, project):
-    commit = models.Commit.query.get(sha)
-    if commit is None:
-        commit = models.Commit(sha=sha, project=project)
-        models.db.session.add(commit)
-        models.db.session.flush()
+class HookEvents(object):
+    """Constants for the X-Github-Event header used to signal event type"""
+    HEADER_KEY = 'X-GitHub-Event'
 
-    return commit
+    PING = 'ping'
+    PUSH = 'push'
+    PULL_REQUEST = 'pull_request'
 
 
-class GithubUpdateHandler(object):
-    """ Constructed with an authenticated :mod:`github.Github` instance and a
-        `data` dictionary describing the update.
+class Responses(object):
+    UNKNOWN_PROJECT = "Ignoring: Unknown project"
+    UNKNOWN_ACTION = "Ignoring: Unknown action"
+    NON_MASTER_PUSH = "Ignoring: Non-master push"
+    NON_MASTER_PR = "Ignoring: Not against master"
+
+    MASTER_PUSH_OK = "Master push handled"
+    PR_OK = "Pull request updated"
+
+
+class GithubHookParser(object):
+    """Parses data from a Flask request object from a github webhook
     """
+    MASTER = 'master'
+    MASTER_REF = 'refs/heads/master'
 
-    def _handle_pull_request(self, pull_request_data):
-        """ handle update to pull request... perform checks
+    def __init__(self, request):
+        self.event_type = request.headers[HookEvents.HEADER_KEY]
+
+        if self.is_ping():
+            self.data = None
+            return
+
+        self.data = request.json
+
+    def get_repo_info(self):
+        """Return RepoInfo namedtuple (owner, name)"""
+        repo_info = self.data['repository']
+
+        repo_name = repo_info['name']
+        owner_info = repo_info['owner']
+        # payloads for different events have different representations (sigh)
+        owner_name = owner_info.get('name') or owner_info.get('login')
+
+        return RepoInfo(owner_name, repo_name)
+
+    def get_pull_request_info(self):
+        """Returns the pull request number, or None if this is not a
+        pull request event
         """
+        if self.event_type != HookEvents.PULL_REQUEST:
+            return None
 
-        pr_number = pull_request_data['number']
-        project = models.Project.query.filter_by(
-            repo_name=self.repo.name).one()
+        pr_info = self.data['pull_request']
 
-        head_sha = pull_request_data['head']['sha']
-        commit = get_or_create_commit(head_sha, project)
+        pr_number = pr_info['number']
+        title = pr_info['title']
+        head = pr_info['head']['sha']
+        state = pr_info['state']
+        base_ref = pr_info['base']['ref']
 
-        title = pull_request_data.get('title', '')
+        return PullRequestInfo(
+            number=pr_number,
+            title=title,
+            head=head,
+            state=state,
+            base_ref=base_ref,
+        )
 
-        pull = models.PullRequest.query.get((pr_number, project.id))
-        if pull is None:
-            # we need to initialise the pull request as it's the
-            # first time we've heard of it
-            pull = models.PullRequest(
-                number=pr_number,
-                project_id=project.id,
-                owner=pull_request_data['user']['login'],
-                title=title,
-            )
-            models.db.session.add(pull)
+    def is_ping(self):
+        return self.event_type == HookEvents.PING
 
-        pull.head_commit = commit.sha
+    def is_pull_request(self):
+        return self.event_type == HookEvents.PULL_REQUEST
 
+    def is_push(self):
+        return self.event_type == HookEvents.PUSH
 
-
-        models.db.session.commit()
-
-    def _handle_master_update(self):
-        project = models.Project.query.filter_by(
-            repo_name=self.repo.name).one()
-
-        master_sha = self.data['head_commit']['sha']
-
-        commit = get_or_create_commit(master_sha, project)
-
-        project.master_sha = commit.sha
-
-        # get all pulls related to that project and invalidate them
-        for gh_pull in self.repo.get_pulls():
-            self._handle_pull_request(gh_pull._rawData)
-
-    def __call__(self, gh, data):
-        self.gh = gh
-        self.data = data
-
-        if (
-            self.repo is None or
-            models.Project.query.filter_by(
-                repo_name=self.repo.name).count() == 0
-        ):
-            logger.warning(
-                'received webhook for unconfigured project:\n'
-                '{}'.format(data))
-            return
-
-        pull_request_data = data.get('pull_request')
-        if pull_request_data is not None:
-            self._handle_pull_request(pull_request_data)
-
-        if 'ref' in data and data['ref'] == MASTER_REF:
-            # this is an update to the master branch
-            self._handle_master_update()
-
-    _repo = None
-
-    @property
-    def repo(self):
-        if self._repo is None:
-            repo_data = self.data['repository']
-            try:
-                repo_name = repo_data['name']
-
-                owner_data = repo_data['owner']
-                owner_name = owner_data.get('name')
-                if owner_name is None:
-                    owner_name = owner_data.get('login')
-                if owner_name is None:
-                    raise KeyError("Neither login nor name found for owner")
-
-            except KeyError:
-                logger.error(
-                    'Unable to parse data. Malformed request:\n'
-                    '{}'.format(repo_data))
-                return
-
-            repo_id = '{}/{}'.format(owner_name, repo_name)
-
-            try:
-                self._repo = self.gh.get_repo(repo_id)
-            except UnknownObjectException:
-                self._repo = None
-
-        return self._repo
-
-    def update_pull_data(self, pull, data):
-        # update row with null values to stop parallel processes from
-        # picking up stale state while we look stuff up from github
-        pull.behind_master = None
-        pull.ahead_of_master = None
-        models.db.session.commit()
-
-        # Find out the current master SHA. Consider using local git to find
-        # this to avoid the api call
-        project = models.Project.query.filter_by(
-            repo_name=self.repo.name).one()
-
-        head_sha = data['head']['sha']
-
-        try:
-            status = self.repo.compare(project.master_sha, pull.head_commit)
-        except (UnknownObjectException, AssertionError):
-            logger.warning(
-                'unable to update pull request when comparing commits: '
-                '{}, {}'.format(project.master_sha, head_sha))
-            return
-
-        pull.behind_master = status.behind_by
-        pull.ahead_of_master = status.ahead_by
-
-        # TODO: check mergeable status ... may not be possible with data sent
-        #       in the github notifcation so call may need to be done
-        #       subsequently
+    def is_master_push(self):
+        return (
+            self.event_type == HookEvents.PUSH and
+            self.data['ref'] == self.MASTER_REF
+        )
 
 
-handle_github_update = GithubUpdateHandler()
+def get_project_from_repo_info(repo_info):
+    try:
+        return Project.query.filter_by(
+            owner=repo_info.owner,
+            name=repo_info.name,
+        ).one()
+    except NoResultFound:
+        return None
 
 
 @app.route('/api/github/update', methods=['POST'])
-def accept_github_update():
-    """ View for github web hooks to handle updates
+def handle_github_webhok():
+    """We always return a 200 to keep github happy, but include info about
+    actions taken
     """
     # TODO: verify request is from github
 
-    github_token = app.config.get('GITHUB_TOKEN')
-    gh = Github(github_token)
-    data = request.form['payload']
-    data = json.loads(data)
+    parser = GithubHookParser(request)
 
-    handle_github_update(gh, data)
+    if parser.is_ping():
+        return "pong"
 
-    return 'OK'
+    if parser.is_push():
+        if not parser.is_master_push():
+            return Responses.NON_MASTER_PUSH
+        return handle_push(parser)
+
+    elif parser.is_pull_request():
+        return handle_pull_request(parser)
+
+    else:
+        return Responses.UNKNOWN_ACTION
 
 
-## Checks
+def handle_push(parser):
+    repo_info = parser.get_repo_info()
+    project = get_project_from_repo_info(repo_info)
+    if project is None:
+        return Responses.UNKNOWN_PROJECT
+
+    pull_requests = db.session.query(
+        PullRequest).filter(
+            PullRequest.project == project,
+            PullRequest.is_open,
+        )
+
+    for pr in pull_requests:
+        pr.behind_master = None
+        pr.ahead_of_master = None
+        pr.is_mergeable = None
+        pr.merge_head = None
+
+    db.session.commit()
+
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        event = MasterMoved(data={
+            'owner': project.owner,
+            'name': project.name,
+        })
+        dispatch(event)
+
+    return Responses.MASTER_PUSH_OK
+
+
+def handle_pull_request(parser):
+    # TODO: handle pull requests across different repos (forks)
+    # we currently assume same repo. See #24
+    repo_info = parser.get_repo_info()
+    project = get_project_from_repo_info(repo_info)
+    if project is None:
+        return Responses.UNKNOWN_PROJECT
+
+    pr_info = parser.get_pull_request_info()
+    if pr_info.base_ref != GithubHookParser.MASTER:
+        # TODO: track these with a separate check "is_against_master"?
+        # if so, set_relative_states needs to get the base sha or similar,
+        # to pass to the git repo.
+        return Responses.NON_MASTER_PR
+
+    pr = PullRequest.query.get((pr_info.number, project.id))
+    if pr is None:
+        # we need to initialise the pull request as it's the
+        # first time we've heard of it
+        pr = PullRequest(
+            number=pr_info.number,
+            project=project,
+            owner=repo_info.owner,
+            title=pr_info.title,
+            is_open=(pr_info.state == PULL_REQUEST_OPEN_STATE),
+        )
+        db.session.add(pr)
+
+    pr.head = pr_info.head
+    pr.merge_head = None
+    db.session.commit()
+
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        event = PullRequestMoved(data={
+            'owner': project.owner,
+            'name': project.name,
+            'number': pr.number,
+        })
+        dispatch(event)
+    return Responses.PR_OK
+
+
+# Checks
 
 @check
 def check_strictly_ahead(pull):
@@ -184,9 +222,15 @@ def check_strictly_ahead(pull):
         return CheckStatus(label='Branch is up to date', status=True)
     elif pull.ahead_of_master > 0 and pull.behind_master > 0:
         # pull request is ahead of master and up to date with the latest head
-        return CheckStatus(label='Branch is not up to date with master', status=False)
+        return CheckStatus(
+            label='Branch is not up to date with master',
+            status=False,
+        )
     else:
-        return CheckStatus(label='Branch has been already merged', status=False)
+        return CheckStatus(
+            label='Branch has been already merged',
+            status=False,
+        )
 
 
 @check

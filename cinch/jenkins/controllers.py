@@ -1,10 +1,20 @@
 from __future__ import absolute_import
 
+from collections import OrderedDict
+
 from flask import url_for, g
+from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 
 from cinch.check import check, CheckStatus
-from cinch.models import db, Project, Commit
-from .models import Job, Build
+from cinch.models import db, Project, PullRequest
+from .models import Job, Build, BuildSha
+from .exceptions import UnknownProject, UnknownJob
+
+
+# for pep8
+NULL = None
 
 
 def g_cache(func):
@@ -25,18 +35,10 @@ def g_cache(func):
 
     return wrapped
 
-@g_cache
-def _get_job_names(project_name):
-    return [job.name for job in get_jobs(project_name)]
 
-@g_cache
-def _get_jobs(project_name):
-    from sqlalchemy.orm import subqueryload
-    jobs = get_jobs(project_name
-        ).options(subqueryload('projects')
-        ).options(subqueryload('builds').subqueryload(Build.commits)
-    )
-    return jobs.all()
+def clear_g_cache():
+    """Test helper to clear the `g_cache`"""
+    getattr(g, '_cache', {}).clear()
 
 
 def get_or_create_build(job, build_number):
@@ -57,23 +59,35 @@ def get_or_create_build(job, build_number):
     return build
 
 
-def record_job_sha(job_name, build_number, project_name, sha):
+def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     """ The Jenkins notifications plugin provides no good way to include
     metadata generate during a build (e.g. resolved git refs) in the
     notification body. This enables an enpoint to collect such data _during_
     the build instead
     """
 
-    job = db.session.query(Job).filter(Job.name == job_name).one()
+    session = db.session
+
+    try:
+        job = session.query(Job).filter(Job.name == job_name).one()
+    except NoResultFound:
+        raise UnknownJob(job_name)
+
     build = get_or_create_build(job, build_number)
 
-    project = db.session.query(Project).filter_by(name=project_name).one()
-    commit = db.session.query(Commit).get(sha)
-    if commit is None:
-        commit = Commit(sha=sha, project=project)
-    build.commits.append(commit)
+    try:
+        project = session.query(Project).filter(
+            Project.owner == project_owner, Project.name == project_name
+        ).one()
+    except NoResultFound:
+        raise UnknownProject(project_owner, project_name)
 
-    db.session.commit()
+    build_sha = session.query(BuildSha).get((build.id, project.id))
+    if build_sha is None:
+        build_sha = BuildSha(build=build, project=project)
+        session.add(build_sha)
+    build_sha.sha = sha
+    session.commit()
 
 
 def record_job_result(job_name, build_number, success, status):
@@ -81,7 +95,11 @@ def record_job_result(job_name, build_number, success, status):
     `record_job_sha` below.
     """
 
-    job = db.session.query(Job).filter(Job.name == job_name).one()
+    try:
+        job = db.session.query(Job).filter(Job.name == job_name).one()
+    except NoResultFound:
+        raise UnknownJob(job_name)
+
     build = get_or_create_build(job, build_number)
 
     build.success = success
@@ -90,93 +108,167 @@ def record_job_result(job_name, build_number, success, status):
     db.session.commit()
 
 
-def get_jobs(project_name):
+def get_job_master_shas():
+    job_master_shas = {}
+    for job in db.session.query(Job).options(joinedload('projects')):
+        # The subqueries for the related projects are ordered in
+        # `successful_job_shas` below. This order needs to match
+        # the order use to look them up later for each pull_request.
+        job_master_shas[job.id] = OrderedDict({
+            project.id: project.master_sha
+            for project in job.projects
+        })
+    return job_master_shas
 
-    return db.session.query(Job).join(Job.projects).filter(
-            Project.name == project_name,
+
+def get_job_build_query(job_id, project_ids, successful_only=True):
+    """Construct a query, and column aliases for querying sha tuples for builds
+    of a given job
+
+    :Parameters:
+        job_id
+        project_ids
+
+    :Returns:
+        query, base_alias, project_sha_columns
+
+        The aliases for the projects are ordered to match the order of
+        `project_ids`
+    """
+    session = db.session
+    base_query = session.query(Build.id, Build.build_number, Build.success)
+    if successful_only:
+        base_query = base_query.filter(Build.success == True)
+    base_query = base_query.join(Job).filter(
+        Job.id == job_id).subquery(name='basequery')
+    query = db.session.query(base_query)
+    aliases = []
+
+    for project_id in project_ids:
+        subquery_alias = session.query(
+            BuildSha.build_id, BuildSha.sha
+            ).filter(
+                BuildSha.project_id == project_id
+            ).subquery(name="project_{}_commits".format(project_id))
+        aliases.append(subquery_alias)
+
+        query = query.outerjoin(
+            subquery_alias,
+            subquery_alias.c.build_id == base_query.c.id,
         )
 
+    sha_columns = [alias.c.sha for alias in aliases]
+    query = query.filter(and_(column != NULL for column in sha_columns))
 
-def get_successful_builds(project_name, branch_shas):
-    """
-        Find successful jobs, given a project name and optional branch
-        sha overrides for projects in the found jobs
+    return query, base_query, sha_columns
 
-        Finds all jobs related to the given project, and looks through all
-        builds for that job, looking for builds that are
-            1. successful
-            2. match the head shas for the projects in that build (unless
-                overriden with branch_shas)
 
-        Arguments:
-            project_name
-                branch_shas: dict {project_name: sha}
+def get_successful_job_shas(job_master_shas):
+    # For each job, we construct a query that finds tuples of shas
+    # for all successful builds. We can then match those against the required
+    # shas for any given pull_request (the head for the project of the pr,
+    # and master for any related projects). It may be possible to do this in
+    # a single query, for for my sanity we're doing n queries for now. Note
+    # that n depends on the number of _jobs_, not the number of builds or open
+    # pull requests.
 
-        Return:
-            A list of names of successful jobs
-    """
-    # it should be possible to do this more efficiently with some
-    # well written sql
+    successful_job_shas = {}
+    for job_id, shas in job_master_shas.items():
+        # The subqueries for the related projects are ordered in
+        # `successful_job_shas` below. This order needs to match
+        # the order use to look them up later for each pull_request.
+        query, base_query, sha_columns = get_job_build_query(
+            job_id, shas.keys())
 
-    # get all jobs relevant to this project and job type
-    # (i.e. figure out the dependencies/impact)
-    jobs = _get_jobs(project_name)
-
-    jobs_with_successful_builds = []
-
-    # for each of the relevant jobs, find any build that matches the required
-    # set of SHAs and also passed
-    for job in jobs:
-
-        # SHAs to match starts as the master_sha of the relevant projects
-        job_shas = {
-            project.name: project.master_sha
-            for project in job.projects
+        # for each job, successful_job_shas is a dictionary, mapping tuples
+        # of shas (ordered as per the job_sha_map) for successful builds to
+        # the build number in question
+        successful_job_shas[job_id] = {
+            result[1:]: result[0]
+            for result in query.values(base_query.c.build_number, *sha_columns)
         }
-        shas = job_shas.copy()
-        # but specific SHAs can be provided to test against
-        shas.update(branch_shas)
 
-        # iterate over all builds of this job. if one matches the exact set
-        # of SHAs we're matching for, consider it a success
-        for build in job.builds:
-            commits = {
-                commit.project.name: commit.sha
-                for commit in build.commits
-            }
-            job_shas = {
-                key: value for key, value in shas.items()
-                if key in job_shas
-            }
-            if commits == job_shas and build.success:
-                jobs_with_successful_builds.append(job.name)
-                break
-
-    return jobs_with_successful_builds
+    return successful_job_shas
 
 
-def build_check(project_name, project_sha):
-    job_names = _get_job_names(project_name)
+def get_successful_pr_builds(job_master_shas, successful_job_shas):
+    pr_map = {}
+    pull_requests = db.session.query(
+        PullRequest
+        ).filter(
+            PullRequest.is_open == True
+        ).options(
+            joinedload('project')
+    )
+    for pr in pull_requests:
+        project = pr.project
+        pr_job_map = {}
 
-    shas = {
-        project_name: project_sha
-    }
-    successful_jobs = get_successful_builds(project_name, shas)
+        for job in project.jobs:
+            # take a copy of the master shas dict, and replace the shas for
+            # this pull request's project by the pull request head. we check
+            # for both the head and the merge_head, accepting a successful
+            # build of either as a success
+            job_id = job.id
+            head_sha_dict = job_master_shas[job_id].copy()
+            head_sha_dict[project.id] = pr.head
+            head_shas = tuple(head_sha_dict.values())
+            merge_head_sha_dict = job_master_shas[job_id].copy()
+            merge_head_sha_dict[project.id] = pr.merge_head
+            merge_head_shas = tuple(merge_head_sha_dict.values())
 
-    return len(set(job_names) - set(successful_jobs)) == 0
+            successful_shas = successful_job_shas[job_id]
+            successful_job_id = successful_shas.get(head_shas)
+            if successful_job_id is None:
+                successful_job_id = successful_shas.get(merge_head_shas)
+            pr_job_map[job_id] = successful_job_id
+
+        pr_map[pr] = pr_job_map
+
+    return pr_map
+
+
+@g_cache
+def all_open_prs():
+    job_master_shas = get_job_master_shas()
+    successful_job_shas = get_successful_job_shas(job_master_shas)
+
+    return get_successful_pr_builds(job_master_shas, successful_job_shas)
 
 
 @check
 def jenkins_check(pull_request):
-    project = pull_request.project
-    status = build_check(project.name, pull_request.head_commit)
+    pr_map = all_open_prs()
+
+    job_ids = pr_map[pull_request].keys()
+    if job_ids:
+        jobs = db.session.query(Job).filter(Job.id.in_(job_ids))
+    else:
+        jobs = []
+
+    # TODO: one url per job
     url = url_for(
         'jenkins.pull_request_status',
+        project_owner=pull_request.project.owner,
         project_name=pull_request.project.name,
         pr_number=pull_request.number,
     )
-    return CheckStatus(
-        label="Jenkins",
-        status=status,
-        url=url,
-    )
+
+    check_statuses = []
+
+    for job in sorted(jobs, key=lambda j: j.name):
+        build_number = pr_map[pull_request][job.id]
+        status = build_number is not None
+        if build_number is None:
+            label = "Jenkins: {}".format(job.name)
+        else:
+            label = "Jenkins: {} [{}]".format(job.name, build_number)
+        check_statuses.append(
+            CheckStatus(
+                label=label,
+                status=status,
+                url=url,
+            )
+        )
+
+    return check_statuses

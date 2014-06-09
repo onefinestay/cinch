@@ -10,7 +10,7 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     db_uri = config.getoption('db_uri')
     if db_uri:
-        os.environ['DB_URI'] = db_uri
+        os.environ['CINCH_DB_URI'] = db_uri
 
     # disable error catching for better traceback
     from cinch import app
@@ -35,7 +35,7 @@ def session():
 def app_context():
     from cinch import app
     with app.test_request_context():
-        yield
+        yield app
 
 
 @pytest.yield_fixture(autouse=True)

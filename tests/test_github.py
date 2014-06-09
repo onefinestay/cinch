@@ -11,12 +11,12 @@ from cinch.worker import MasterMoved, PullRequestMoved
 URL = '/api/github/update'
 
 
-@pytest.mark.parametrize(('args', 'status_code', 'valid_update'), [
-    ({}, 401, False),
-    ({'secret': 'incorrect secret'}, 401, False),
-    ({'secret': 'secret'}, 200, True),
+@pytest.mark.parametrize(('args', 'status_code'), [
+    ({}, 401),
+    ({'secret': 'incorrect secret'}, 401),
+    ({'secret': 'secret'}, 200),
 ])
-def test_updates_require_secret(args, status_code, valid_update):
+def test_updates_require_secret(args, status_code):
     app.config['GITHUB_TOKEN'] = 'abc'
     app.config['GITHUB_UPDATE_SECRET'] = 'secret'
 
@@ -27,7 +27,6 @@ def test_updates_require_secret(args, status_code, valid_update):
         )
 
     assert res.status_code == status_code
-    assert valid_update == (res.data == 'pong')
 
 
 @pytest.fixture(autouse=True)

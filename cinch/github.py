@@ -227,18 +227,22 @@ def check_strictly_ahead(pull):
         # pull request is ahead of master and up to date with the latest head
         return CheckStatus(
             label='Branch is not up to date with master',
-            status=False,
+            status=None,
         )
     else:
         return CheckStatus(
             label='Branch has been already merged',
-            status=False,
+            status=None,
         )
 
 
 @check
 def check_mergeable(pull):
-    if pull.is_mergeable:
-        return CheckStatus(label='Mergeable', status=True)
-    else:
-        return CheckStatus(label='Not automatically mergeable', status=False)
+    status = pull.is_mergeable
+    labels = {
+        True: 'Mergeable',
+        False: 'Not automatically mergeable',
+    }
+    label = labels.get(status, 'Merge status unknown')
+
+    return CheckStatus(label=label, status=status)

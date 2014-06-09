@@ -97,6 +97,7 @@ def test_auth():
 def status_label_filter(value):
     status_map = {
         True: 'success',
-        False: 'warning',
+        None: 'warning',
+        False: 'danger',
     }
     return status_map.get(value, '')

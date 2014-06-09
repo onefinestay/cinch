@@ -105,7 +105,6 @@ def pull_request_status(project_owner, project_name, pr_number):
         query, base_query, sha_columns = get_job_build_query(
             job.id,
             [project.id for project in job.projects],
-            successful_only=False,
         )
 
         # build number, success, shas

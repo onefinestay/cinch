@@ -242,7 +242,8 @@ def check_mergeable(pull):
     labels = {
         True: 'Mergeable',
         False: 'Not automatically mergeable',
+        None: 'Merge status unknown',
     }
-    label = labels.get(status, 'Merge status unknown')
 
+    label = labels[status]
     return CheckStatus(label=label, status=status)

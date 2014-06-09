@@ -62,7 +62,7 @@ def get_or_create_build(job, build_number):
 def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     """ The Jenkins notifications plugin provides no good way to include
     metadata generate during a build (e.g. resolved git refs) in the
-    notification body. This enables an enpoint to collect such data _during_
+    notification body. This enables an endpoint to collect such data _during_
     the build instead
     """
 

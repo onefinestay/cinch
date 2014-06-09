@@ -116,7 +116,7 @@ def get_project_from_repo_info(repo_info):
 
 
 @app.route('/api/github/update', methods=['POST'])
-def handle_github_webhok():
+def handle_github_webhook():
     """We always return a 200 to keep github happy, but include info about
     actions taken
     """

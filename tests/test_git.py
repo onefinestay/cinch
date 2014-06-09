@@ -18,7 +18,9 @@ def tmp_base_dir(request):
 
 @pytest.fixture(scope='module')
 def repo(tmp_base_dir):
-    repo = Repo.setup_repo('onefinestay', 'cinch')
+    public_url_template = "https://github.com/{}/{}.git"
+    with patch('cinch.git', 'GITHUB_URL_TEMPLATE', public_url_template):
+        repo = Repo.setup_repo('onefinestay', 'cinch')
     return repo
 
 

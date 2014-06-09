@@ -20,3 +20,6 @@ export CINCH_SENTRY_DSN=
 
 # A sqlalchemy parseable database identifier
 export CINCH_DB_URI=
+
+# URL to jenkins instance (for links to builds)
+export CINCH_JENKINS_URL=

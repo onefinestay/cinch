@@ -12,6 +12,9 @@ export CINCH_GITHUB_TOKEN=
 # see http://flask.pocoo.org/docs/quickstart/#sessions
 export CINCH_SECRET_KEY=
 
+# For the nameko worker
+export CINCH_NAMEKO_AMQP_URI=
+
 
 ## optional configuration
 
@@ -20,6 +23,10 @@ export CINCH_SENTRY_DSN=
 
 # A sqlalchemy parseable database identifier
 export CINCH_DB_URI=
+
+# A comma separated list of github usernames allowed to administer
+# this cinch instance
+export CINCH_ADMIN_USERS=
 
 # URL to jenkins instance (for links to builds)
 export CINCH_JENKINS_URL=

@@ -2,6 +2,7 @@ from mock import patch
 import pytest
 
 from cinch import app
+from cinch import git
 from cinch.git import Repo
 
 pytestmark = pytest.mark.slow
@@ -18,7 +19,9 @@ def tmp_base_dir(request):
 
 @pytest.fixture(scope='module')
 def repo(tmp_base_dir):
-    repo = Repo.setup_repo('onefinestay', 'cinch')
+    public_url_template = "https://github.com/{}/{}.git"
+    with patch.object(git, 'GITHUB_URL_TEMPLATE', public_url_template):
+        repo = Repo.setup_repo('onefinestay', 'cinch')
     return repo
 
 

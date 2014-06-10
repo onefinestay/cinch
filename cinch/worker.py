@@ -2,11 +2,13 @@
 
 import logging
 
+from flask import url_for
 from nameko.containers import MAX_WORKERS_CONFIG_KEY
 from nameko.events import Event, event_handler
 from nameko.messaging import AMQP_URI_CONFIG_KEY
 
 from cinch import db
+from cinch.check import run_checks
 from cinch.git import Repo
 from cinch.models import Project, PullRequest
 
@@ -15,6 +17,19 @@ _logger = logging.getLogger(__name__)
 
 
 from cinch import app
+
+
+PENDING = 'pending'
+SUCCESS = 'success'
+ERROR = 'error'
+FAILURE = 'failure'
+
+STATUS_DESCRIPTIONS = {
+    PENDING: 'Rolling, rolling, rolling',
+    SUCCESS: 'Great success, ready for release',
+    ERROR: 'something went terribly wrong',
+    FAILURE: 'Better luck next time'
+}
 
 
 class MasterMoved(Event):
@@ -45,6 +60,18 @@ class PullRequestMoved(Event):
     """
 
     type = 'pull_request_moved'
+
+
+class PullRequestStatusUpdated(Event):
+    """ The build status for this pull request has changed.
+
+    :Event data:
+        pull_request : (int, int)
+            The pull request number and project id for looking up this pull
+            request
+    """
+
+    type = 'pull_request_status_updated'
 
 
 def get_nameko_config():
@@ -85,6 +112,19 @@ def set_relative_states(pr, fetch=True):
     pr.merge_head = merge_head
 
 
+def determine_pull_request_status(pull_request):
+    # only iterate over the generator once
+    checks = [check for check in run_checks(pull_request)]
+
+    if all(check.status for check in checks):
+        return SUCCESS
+    # TODO: fail fast or wait till build is complete before recording failure
+    elif any(check.status is False for check in checks):
+        return FAILURE
+    elif any(check.status is None for check in checks):
+        return PENDING
+
+
 class RepoWorker(object):
     name = 'cinch'
 
@@ -120,3 +160,28 @@ class RepoWorker(object):
                 PullRequest.number == number,
             ).one()
         set_relative_states(pull_request)
+
+    @event_handler('cinch', PullRequestStatusUpdated, reliable_delivery=True)
+    def pull_request_status_updated(self, event_data):
+        pull_request = db.session.query(PullRequest).get(
+            event_data['pull_request'])
+
+        status = determine_pull_request_status(pull_request)
+        detail_url = url_for(
+            'jenkins.pull_request_status',
+            project_owner=pull_request.project_owner,
+            project_name=pull_request.project_name,
+            pr_number=pull_request.number,
+        )
+
+        payload = {
+            "state": status,
+            "target_url": detail_url,
+            "description": STATUS_DESCRIPTIONS.get(status, ''),
+            "context": "continuous-integration/cinch"
+        }
+
+        # send payload to github
+
+
+

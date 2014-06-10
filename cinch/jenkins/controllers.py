@@ -3,12 +3,14 @@ from __future__ import absolute_import
 from collections import OrderedDict
 
 from flask import url_for, g
+from nameko.standalone.events import event_dispatcher
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
+from cinch.worker import PullRequestStatusUpdated, get_nameko_config
 from .models import Job, Build, BuildSha
 from .exceptions import UnknownProject, UnknownJob
 
@@ -90,6 +92,21 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     session.commit()
 
 
+def get_pr_for_build(build):
+    # we need to see if any of the shas associated with this build match any
+    # open pull requests
+    session = db.session
+
+    build_shas = session.query(BuildSha).filter(build=build).all()
+
+    pull = session.query(PullRequest).filter(
+        PullRequest.is_open == True,
+        PullRequest.head.in_([build_sha.sha for build_sha in build_shas]),
+    ).first()  # TODO: do we have enough checks to ensure only one result?
+
+    return pull
+
+
 def record_job_result(job_name, build_number, success, status):
     """ Record status of a build. Shas should already have been provided to
     `record_job_sha` below.
@@ -104,6 +121,15 @@ def record_job_result(job_name, build_number, success, status):
 
     build.success = success
     build.status = status
+
+    pull = get_pr_for_build(build)
+
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        event = PullRequestStatusUpdated(data={
+            'pull_request': (pull.number, pull.project_id),
+        })
+        dispatch(event)
 
     db.session.commit()
 

@@ -1,3 +1,0 @@
-include README.rst LICENSE requirements.txt
-recursive-include cinch/templates/ *
-recursive-include cinch/static/ *

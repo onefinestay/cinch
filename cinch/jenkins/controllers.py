@@ -115,7 +115,7 @@ def record_job_result(job_name, build_number, success, status):
 def get_job_master_shas():
     job_master_shas = {}
     for job in db.session.query(Job).options(joinedload('projects')):
-        # The subqueries for the related projects are ordered in
+        # The BuildSha aliases for the related projects are ordered in
         # `get_job_sha_statuses` below. This order needs to match
         # the order use to look them up later for each pull_request.
         job_master_shas[job.id] = OrderedDict({
@@ -140,29 +140,28 @@ def get_job_build_query(job_id, project_ids):
         `project_ids`
     """
     session = db.session
-    base_query = session.query(Build.id, Build.build_number, Build.success)
-    base_query = base_query.join(Job).filter(
-        Job.id == job_id).subquery(name='basequery')
-    query = db.session.query(base_query)
+    from sqlalchemy.orm import aliased
+    query = session.query(Build.id, Build.build_number, Build.success
+        ).join(Job).filter(Job.id == job_id)
     aliases = []
 
     for project_id in project_ids:
-        subquery_alias = session.query(
-            BuildSha.build_id, BuildSha.sha
-            ).filter(
-                BuildSha.project_id == project_id
-            ).subquery(name="project_{}_commits".format(project_id))
-        aliases.append(subquery_alias)
+        build_sha_alias = aliased(
+            BuildSha, name="project_{}_commits".format(project_id))
+        aliases.append(build_sha_alias)
 
         query = query.outerjoin(
-            subquery_alias,
-            subquery_alias.c.build_id == base_query.c.id,
+            build_sha_alias,
+            and_(
+                build_sha_alias.build_id == Build.id,
+                build_sha_alias.project_id == project_id,
+            )
         )
 
-    sha_columns = [alias.c.sha for alias in aliases]
+    sha_columns = [alias.sha for alias in aliases]
     query = query.filter(and_(column != NULL for column in sha_columns))
 
-    return query, base_query, sha_columns
+    return query, sha_columns
 
 
 def get_job_sha_statuses(job_master_shas):
@@ -178,16 +177,15 @@ def get_job_sha_statuses(job_master_shas):
         # The subqueries for the related projects are ordered in
         # `successful_job_shas` below. This order needs to match
         # the order use to look them up later for each pull_request.
-        query, base_query, sha_columns = get_job_build_query(
+        query, sha_columns = get_job_build_query(
             job_id, shas.keys())
 
         # for each job, successful_job_shas is a dictionary, mapping tuples
         # of shas (ordered as per the job_sha_map) for successful builds to
         # the build number in question
         job_statuses[job_id] = {}
-        for result in query.values(
-            base_query.c.build_number, base_query.c.success, *sha_columns
-        ):
+        results = query.values(Build.build_number, Build.success, *sha_columns)
+        for result in results:
             shas = result[2:]
             job_statuses[job_id][shas] = BuildInfo(
                 result.build_number, result.success)

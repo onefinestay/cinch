@@ -42,7 +42,7 @@ def test_ping():
     assert res.data == 'pong'
 
 
-def test_unknown_project(hook_post):
+def test_unknown_project(session, hook_post):
     data = {
         'repository': {
             'name': 'unknown',

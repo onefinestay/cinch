@@ -3,6 +3,7 @@
 import logging
 
 from flask import url_for
+from flask.ext.github import GitHub
 from nameko.containers import MAX_WORKERS_CONFIG_KEY
 from nameko.events import Event, event_handler
 from nameko.messaging import AMQP_URI_CONFIG_KEY
@@ -18,6 +19,8 @@ _logger = logging.getLogger(__name__)
 
 from cinch import app
 
+github = GitHub(app)
+
 
 PENDING = 'pending'
 SUCCESS = 'success'
@@ -27,7 +30,7 @@ FAILURE = 'failure'
 STATUS_DESCRIPTIONS = {
     PENDING: 'Rolling, rolling, rolling',
     SUCCESS: 'Great success, ready for release',
-    ERROR: 'something went terribly wrong',
+    ERROR: 'Something went terribly wrong',
     FAILURE: 'Better luck next time'
 }
 
@@ -165,12 +168,13 @@ class RepoWorker(object):
     def pull_request_status_updated(self, event_data):
         pull_request = db.session.query(PullRequest).get(
             event_data['pull_request'])
+        project = pull_request.project
 
         status = determine_pull_request_status(pull_request)
         detail_url = url_for(
             'jenkins.pull_request_status',
-            project_owner=pull_request.project_owner,
-            project_name=pull_request.project_name,
+            project_owner=project.owner,
+            project_name=project.name,
             pr_number=pull_request.number,
         )
 
@@ -181,7 +185,9 @@ class RepoWorker(object):
             "context": "continuous-integration/cinch"
         }
 
-        # send payload to github
-
-
-
+        status_uri = 'repos/{owner}/{project}/statuses/{sha}'.format(
+            owner=project.owner,
+            project=project.name,
+            sha=pull_request.head,
+        )
+        github.post(status_uri, payload)

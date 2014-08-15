@@ -110,7 +110,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     build_sha.sha = sha
     session.commit()
 
-    # These are all the prs that *might* be effected by the status of this
+    # These are all the prs that *might* be affected by the status of this
     # build. If this build is not for a pull request against master shas in
     # each of the other projects, the worker will determine the status has not
     # changed.

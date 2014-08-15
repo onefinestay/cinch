@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from flask import url_for, g
 from nameko.standalone.events import event_dispatcher
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -61,19 +61,23 @@ def get_or_create_build(job, build_number):
     return build
 
 
-def get_pr_for_build(build):
+def get_prs_for_build(build):
     # we need to see if any of the shas associated with this build match any
     # open pull requests
     session = db.session
 
-    build_shas = session.query(BuildSha).filter(build=build).all()
+    build_shas = session.query(BuildSha.sha).filter(build=build).all()
+    build_shas = [build_sha.sha for build_sha in build_shas]
 
-    pull = session.query(PullRequest).filter(
+    pulls = session.query(PullRequest).filter(
         PullRequest.is_open == True,
-        PullRequest.head.in_([build_sha.sha for build_sha in build_shas]),
-    ).first()  # TODO: do we have enough checks to ensure only one result?
+        or_(
+            PullRequest.head.in_(build_shas),
+            PullRequest.merge_head.in_(build_shas)
+        ),
+    )
 
-    return pull
+    return pulls
 
 
 def record_job_sha(job_name, build_number, project_owner, project_name, sha):
@@ -106,14 +110,19 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     build_sha.sha = sha
     session.commit()
 
-    pull = get_pr_for_build(build)
+    # These are all the prs that *might* be effected by the status of this
+    # build. If this build is not for a pull request against master shas in
+    # each of the other projects, the worker will determine the status has not
+    # changed.
+    pulls = get_prs_for_build(build)
 
     config = get_nameko_config()
     with event_dispatcher('cinch', config) as dispatch:
-        event = PullRequestStatusUpdated(data={
-            'pull_request': (pull.number, pull.project_id),
-        })
-        dispatch(event)
+        for pull in pulls:
+            event = PullRequestStatusUpdated(data={
+                'pull_request': (pull.number, pull.project_id),
+            })
+            dispatch(event)
 
 
 def record_job_result(job_name, build_number, success, status):

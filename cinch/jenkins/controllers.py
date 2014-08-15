@@ -4,7 +4,7 @@ from collections import OrderedDict, namedtuple
 
 from flask import url_for, g
 from sqlalchemy import and_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app
@@ -140,7 +140,6 @@ def get_job_build_query(job_id, project_ids):
         `project_ids`
     """
     session = db.session
-    from sqlalchemy.orm import aliased
     query = session.query(Build.id, Build.build_number, Build.success
         ).join(Job).filter(Job.id == job_id)
     aliases = []

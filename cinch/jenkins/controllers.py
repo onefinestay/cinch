@@ -142,7 +142,7 @@ def record_job_result(job_name, build_number, success, status):
 
     db.session.commit()
 
-    pull = get_pr_for_build(build)
+    pull = get_prs_for_build(build)
 
     config = get_nameko_config()
     with event_dispatcher('cinch', config) as dispatch:

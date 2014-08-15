@@ -24,17 +24,18 @@ from cinch import app
 github = GitHub(app)
 
 
-PENDING = 'pending'
-SUCCESS = 'success'
-ERROR = 'error'
-FAILURE = 'failure'
+class GithubStatus(object):
+    PENDING = 'pending'
+    SUCCESS = 'success'
+    ERROR = 'error'
+    FAILURE = 'failure'
 
-STATUS_DESCRIPTIONS = {
-    PENDING: 'Rolling, rolling, rolling',
-    SUCCESS: 'Great success, ready for release',
-    ERROR: 'Something went terribly wrong',
-    FAILURE: 'Better luck next time'
-}
+    descriptions = {
+        PENDING: 'Rolling, rolling, rolling',
+        SUCCESS: 'Great success, ready for release',
+        ERROR: 'Something went terribly wrong',
+        FAILURE: 'Better luck next time'
+    }
 
 
 class MasterMoved(Event):
@@ -129,12 +130,12 @@ def determine_pull_request_status(pull_request):
     checks = [check for check in run_checks(pull_request)]
 
     if all(check.status for check in checks):
-        return SUCCESS
+        return GithubStatus.SUCCESS
     # TODO: fail fast or wait till build is complete before recording failure
     elif any(check.status is False for check in checks):
-        return FAILURE
+        return GithubStatus.FAILURE
     elif any(check.status is None for check in checks):
-        return PENDING
+        return GithubStatus.PENDING
 
 
 class RepoWorker(object):
@@ -190,7 +191,7 @@ class RepoWorker(object):
         payload = {
             "state": status,
             "target_url": detail_url,
-            "description": STATUS_DESCRIPTIONS.get(status, ''),
+            "description": GithubStatus.descriptions.get(status, ''),
             "context": "continuous-integration/cinch"
         }
 

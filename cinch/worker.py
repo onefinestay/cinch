@@ -1,5 +1,6 @@
 """Nameko worker for async handling of updates"""
 
+from contextlib import contextmanager
 import logging
 
 from flask import url_for
@@ -7,6 +8,7 @@ from flask.ext.github import GitHub
 from nameko.containers import MAX_WORKERS_CONFIG_KEY
 from nameko.events import Event, event_handler
 from nameko.messaging import AMQP_URI_CONFIG_KEY
+from nameko.standalone.events import event_dispatcher
 
 from cinch import db
 from cinch.check import run_checks
@@ -91,6 +93,13 @@ def get_nameko_config():
         # we're not threadsafe, but don't need concurrency, only async
         MAX_WORKERS_CONFIG_KEY: 1,
     }
+
+
+@contextmanager
+def dispatcher():
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        yield dispatch
 
 
 def set_relative_states(pr, fetch=True):

@@ -3,14 +3,13 @@ from __future__ import absolute_import
 from collections import OrderedDict
 
 from flask import url_for, g
-from nameko.standalone.events import event_dispatcher
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
-from cinch.worker import PullRequestStatusUpdated, get_nameko_config
+from cinch.worker import dispatcher, PullRequestStatusUpdated
 from .models import Job, Build, BuildSha
 from .exceptions import UnknownProject, UnknownJob
 
@@ -116,8 +115,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     # changed.
     pulls = get_prs_for_build(build)
 
-    config = get_nameko_config()
-    with event_dispatcher('cinch', config) as dispatch:
+    with dispatcher() as dispatch:
         for pull in pulls:
             event = PullRequestStatusUpdated(data={
                 'pull_request': (pull.number, pull.project_id),
@@ -144,8 +142,7 @@ def record_job_result(job_name, build_number, success, status):
 
     pull = get_prs_for_build(build)
 
-    config = get_nameko_config()
-    with event_dispatcher('cinch', config) as dispatch:
+    with dispatcher() as dispatch:
         event = PullRequestStatusUpdated(data={
             'pull_request': (pull.number, pull.project_id),
         })

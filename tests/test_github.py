@@ -18,13 +18,14 @@ def propagate_exceptions():
 
 @pytest.yield_fixture(autouse=True)
 def mock_dispatch():
-    with patch('cinch.github.event_dispatcher') as dispatcher:
+    with patch('cinch.github.dispatcher') as dispatcher:
         yield dispatcher().__enter__()
 
 
 @pytest.fixture
 def hook_post():
     client = app.test_client()
+
     def poster(data, event_type):
         headers = {
             'Content-type': 'application/json',
@@ -33,7 +34,6 @@ def hook_post():
         serialised = json.dumps(data)
         return client.post(URL, data=serialised, headers=headers)
     return poster
-
 
 
 def test_ping():
@@ -171,7 +171,8 @@ class TestPullRequest(object):
             'number': 1,
         }
 
-    def test_ignore_not_against_master(self, session, hook_post, mock_dispatch):
+    def test_ignore_not_against_master(self, session, hook_post,
+                                       mock_dispatch):
         data = {
             'repository': {
                 'name': 'my_name',

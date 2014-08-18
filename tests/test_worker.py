@@ -85,7 +85,6 @@ class TestPush(object):
         assert repo.fetch.call_count == 1  # not once per pr
 
 
-
 class TestPullRequest(object):
     @pytest.fixture(autouse=True)
     def project(self, session):

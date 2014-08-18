@@ -196,11 +196,11 @@ def handle_pull_request(parser):
             number=pr_info.number,
             project=project,
             owner=pr_info.user,
-            title=pr_info.title,
-            is_open=(pr_info.state == PULL_REQUEST_OPEN_STATE),
         )
         db.session.add(pr)
 
+    pr.title = pr_info.title
+    pr.is_open = (pr_info.state == PULL_REQUEST_OPEN_STATE)
     pr.head = pr_info.head
     pr.merge_head = None
     db.session.commit()

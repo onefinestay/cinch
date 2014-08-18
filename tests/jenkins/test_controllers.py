@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from itertools import count
 
+from mock import patch
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
@@ -8,7 +9,8 @@ from cinch.models import Project, PullRequest
 from cinch.jenkins.models import Job, BuildSha
 from cinch.jenkins.controllers import (
     clear_g_cache, record_job_result, record_job_sha, all_open_prs,
-    get_successful_job_shas, jenkins_check,
+    get_successful_job_shas, jenkins_check, get_or_create_build,
+    get_prs_for_build
 )
 
 counter = count()
@@ -57,6 +59,7 @@ def make_pr(session, project_name, sha):
     session.commit()
     return pull_request
 
+
 def get_successful_shas(job, shas):
     """Test helper for checking single jobs"""
     successful_job_shas = get_successful_job_shas({job: shas})
@@ -90,6 +93,65 @@ def test_record_job_result(session, fixtures):
     assert session.query(BuildSha).count() == 4
     assert session.query(BuildSha).filter_by(
         sha="sha2").one().project.name == "app"
+
+
+def test_get_prs_for_build(session, fixtures):
+
+    set_master(session, 'app', 'sha1')
+    set_master(session, 'library', 'sha2')
+
+    app_pr = make_pr(session, project_name='app', sha='1234')
+
+    with patch('cinch.jenkins.controllers.dispatcher') as dispatcher:
+        with dispatcher() as dispatch:
+            pass
+
+        record_job_sha('app_integration', 1, 'owner', 'library', 'sha2')
+        assert dispatch.call_count == 0
+
+        record_job_sha('app_integration', 1, 'owner', 'app', '1234')
+        assert dispatch.call_count == 1
+
+        record_job_result('app_integration', 1, True, "passed")
+        assert dispatch.call_count == 2
+
+    job = session.query(Job).filter(Job.name == 'app_integration').one()
+    build = get_or_create_build(job, 1)
+    prs = get_prs_for_build(build).all()
+
+    assert len(prs) == 1
+    assert prs[0] == app_pr
+
+
+def test_multiple_prs_for_build(session, fixtures):
+
+    set_master(session, 'app', 'sha1')
+    set_master(session, 'library', 'sha2')
+
+    app_pr = make_pr(session, project_name='app', sha='1234')
+    library_pr = make_pr(session, project_name='library', sha='2345')
+
+    with patch('cinch.jenkins.controllers.dispatcher') as dispatcher:
+        with dispatcher() as dispatch:
+            pass
+
+        record_job_sha('app_integration', 1, 'owner', 'app', '1234')
+        assert dispatch.call_count == 1
+
+        record_job_sha('app_integration', 1, 'owner', 'library', '2345')
+        # both pull requests will be recorded from this point
+        assert dispatch.call_count == 3
+
+        record_job_result('app_integration', 1, True, "passed")
+        assert dispatch.call_count == 5
+
+    job = session.query(Job).filter(Job.name == 'app_integration').one()
+    build = get_or_create_build(job, 1)
+    prs = get_prs_for_build(build).all()
+
+    assert len(prs) == 2
+    assert app_pr in prs
+    assert library_pr in prs
 
 
 class TestGetSuccessfulJobShas(object):

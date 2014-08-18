@@ -180,6 +180,9 @@ class RepoWorker(object):
             event_data['pull_request'])
         project = pull_request.project
 
+        if not project.update_status:
+            return
+
         status = determine_pull_request_status(pull_request)
         detail_url = url_for(
             'jenkins.pull_request_status',

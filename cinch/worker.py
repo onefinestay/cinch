@@ -1,6 +1,7 @@
 """Nameko worker for async handling of updates"""
 
 from contextlib import contextmanager
+from functools import wraps
 import logging
 
 from flask import url_for
@@ -103,6 +104,19 @@ def dispatcher():
         yield dispatch
 
 
+def worker_app_context(func):
+    """ Allows offline generation of urls using `url_for` if a `SERVER_NAME`
+    was provided as part of the application configuration.
+    """
+
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        with app.app_context():
+            return func(*args, **kwargs)
+
+    return wrapped
+
+
 def set_relative_states(pr, fetch=True):
     """Set values of states that are relative to the base branch"""
 
@@ -174,7 +188,10 @@ class RepoWorker(object):
             ).one()
         set_relative_states(pull_request)
 
+        db.session.commit()
+
     @event_handler('cinch', PullRequestStatusUpdated, reliable_delivery=True)
+    @worker_app_context
     def pull_request_status_updated(self, event_data):
         pull_request = db.session.query(PullRequest).get(
             event_data['pull_request'])

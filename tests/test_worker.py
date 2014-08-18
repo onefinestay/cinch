@@ -1,8 +1,9 @@
 from mock import patch
 import pytest
 
+from cinch import app
 from cinch.models import Project, PullRequest
-from cinch.worker import RepoWorker
+from cinch.worker import RepoWorker, GithubStatus
 
 
 @pytest.yield_fixture(autouse=True)
@@ -114,3 +115,88 @@ class TestPullRequest(object):
         assert repo.compare_pr.call_count == 1
         args, _ = repo.compare_pr.call_args_list[0]
         assert args == (2,)
+
+
+class TestPullRequestStatusUpdated(object):
+
+    @pytest.fixture(autouse=True)
+    def project(self, session):
+        project = Project(owner='my_owner', name='my_name', update_status=True)
+        session.add(project)
+        session.commit()
+        return project
+
+    @pytest.fixture
+    def pull_request(self, session, project):
+        pr = PullRequest(
+            project=project, number=1, head='sha1', owner='me',
+            title='foo', is_open=True
+        )
+        session.add(pr)
+        session.commit()
+        return pr
+
+    @pytest.yield_fixture
+    def github(self):
+        with patch('cinch.worker.github') as gh:
+            yield gh
+
+    def test_payload(self, session, pull_request, fake_repo, github):
+        event_data = {
+            'pull_request': (pull_request.number, pull_request.project_id),
+        }
+
+        target_url = 'http://{}/jenkins/pr/{}/{}/{}'.format(
+            app.config['SERVER_NAME'],
+            pull_request.project.owner,
+            pull_request.project.name,
+            pull_request.number,
+        )
+
+        worker = RepoWorker()
+
+        worker.pull_request_status_updated(event_data)
+        github.post.assert_called_with(
+            'repos/my_owner/my_name/statuses/sha1',
+            {
+                'state': 'failure',
+                'target_url': target_url,
+                'description': 'Better luck next time',
+                'context': 'continuous-integration/cinch',
+            }
+        )
+
+        with patch('cinch.worker.determine_pull_request_status') as get_status:
+            get_status.return_value = GithubStatus.PENDING
+
+            worker.pull_request_status_updated(event_data)
+            github.post.assert_called_with(
+                'repos/my_owner/my_name/statuses/sha1',
+                {
+                    'state': 'pending',
+                    'target_url': target_url,
+                    'description': 'Rolling, rolling, rolling',
+                    'context': 'continuous-integration/cinch',
+                }
+            )
+
+        repo = fake_repo.from_local_repo('owner', 'name')
+        repo.compare_pr.return_value = (0, 10)
+        repo.is_mergeable.return_value = True
+
+        worker.pull_request_moved({
+            'name': 'my_name',
+            'owner': 'my_owner',
+            'number': 1,
+        })
+
+        worker.pull_request_status_updated(event_data)
+        github.post.assert_called_with(
+            'repos/my_owner/my_name/statuses/sha1',
+            {
+                'state': 'success',
+                'target_url': target_url,
+                'description': 'Great success, ready for release',
+                'context': 'continuous-integration/cinch',
+            }
+        )

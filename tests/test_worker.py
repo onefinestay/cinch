@@ -105,6 +105,7 @@ class TestPullRequest(object):
 
         repo = fake_repo.from_local_repo('owner', 'name')
         repo.is_mergeable.return_value = False
+        repo.merge_head.return_value = None
 
         worker = RepoWorker()
         worker.pull_request_moved({
@@ -159,23 +160,23 @@ class TestPullRequestStatusUpdated(object):
         github.post.assert_called_with(
             'repos/my_owner/my_name/statuses/sha1',
             {
-                'state': 'failure',
+                'state': 'pending',
                 'target_url': target_url,
-                'description': 'Better luck next time',
+                'description': 'Rolling, rolling, rolling',
                 'context': 'continuous-integration/cinch',
             }
         )
 
         with patch('cinch.worker.determine_pull_request_status') as get_status:
-            get_status.return_value = GithubStatus.PENDING
+            get_status.return_value = GithubStatus.FAILURE
 
             worker.pull_request_status_updated(event_data)
             github.post.assert_called_with(
                 'repos/my_owner/my_name/statuses/sha1',
                 {
-                    'state': 'pending',
+                    'state': 'failure',
                     'target_url': target_url,
-                    'description': 'Rolling, rolling, rolling',
+                    'description': 'Better luck next time',
                     'context': 'continuous-integration/cinch',
                 }
             )

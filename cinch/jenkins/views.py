@@ -9,6 +9,7 @@ from cinch import db
 from cinch.models import PullRequest, Project
 from .controllers import record_job_result, record_job_sha, get_job_build_query
 from .exceptions import UnknownProject, UnknownJob
+from .models import Build
 
 
 logger = logging.getLogger(__name__)
@@ -102,20 +103,19 @@ def pull_request_status(project_owner, project_name, pr_number):
         if pull_request_project not in job.projects:
             continue
 
-        query, base_query, sha_columns = get_job_build_query(
+        query, sha_columns = get_job_build_query(
             job.id,
             [project.id for project in job.projects],
-            successful_only=False,
         )
 
         # build number, success, shas
         job_builds[job] = [
             (result[0], result[1], result[2:])
             for result in query.order_by(
-                desc(base_query.c.build_number)
+                desc(Build.build_number)
             ).values(
-                base_query.c.build_number,
-                base_query.c.success,
+                Build.build_number,
+                Build.success,
                 *sha_columns
             )
         ]

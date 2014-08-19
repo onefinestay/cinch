@@ -9,8 +9,7 @@ from cinch.models import Project, PullRequest
 from cinch.jenkins.models import Job, BuildSha
 from cinch.jenkins.controllers import (
     clear_g_cache, record_job_result, record_job_sha, all_open_prs,
-    get_successful_job_shas, jenkins_check, get_or_create_build,
-    get_prs_for_build
+    get_job_sha_statuses, jenkins_check, get_or_create_build, get_prs_for_build
 )
 
 counter = count()
@@ -60,12 +59,12 @@ def make_pr(session, project_name, sha):
     return pull_request
 
 
-def get_successful_shas(job, shas):
+def get_shas(job, shas):
     """Test helper for checking single jobs"""
-    successful_job_shas = get_successful_job_shas({job: shas})
-    assert len(successful_job_shas) == 1
-    assert job in successful_job_shas
-    return successful_job_shas[job]
+    job_shas = get_job_sha_statuses({job: shas})
+    assert len(job_shas) == 1
+    assert job in job_shas
+    return job_shas[job]
 
 
 def test_record_job_result(session, fixtures):
@@ -165,12 +164,12 @@ class TestGetSuccessfulJobShas(object):
         shas = OrderedDict([
             (library.id, 'sha1'),
         ])
-        successful = get_successful_shas(
+        successful = get_shas(
             fixtures['library_unit'].id,
             shas,
         )
         assert successful == {
-            ('sha1',): 1,
+            ('sha1',): (1, True),
         }
 
     def test_multi_project_job(self, fixtures):
@@ -186,8 +185,8 @@ class TestGetSuccessfulJobShas(object):
         record_job_sha('app_integration', 2, 'owner', 'library', 'sha3')
         record_job_result('app_integration', 2, True, "passed")
 
-        successful = get_successful_shas(fixtures['app_integration'].id, shas)
-        assert successful[('sha2', 'sha3')] == 2
+        successful = get_shas(fixtures['app_integration'].id, shas)
+        assert successful[('sha2', 'sha3')] == (2, True)
 
     def test_multiple_builds(self, fixtures):
         library = fixtures['library']
@@ -205,13 +204,13 @@ class TestGetSuccessfulJobShas(object):
         record_job_sha('app_integration', 4, 'owner', 'library', 'sha5')
         record_job_result('app_integration', 4, True, "passed")
 
-        successful = get_successful_shas(fixtures['app_integration'].id, shas)
+        successful = get_shas(fixtures['app_integration'].id, shas)
         assert successful == {
-            ('sha2', 'sha3'): 2,
-            ('sha4', 'sha5'): 4,
+            ('sha2', 'sha3'): (2, True),
+            ('sha4', 'sha5'): (4, True),
         }
 
-    def test_unsuccesful_builds_ignored(self, fixtures):
+    def test_unsuccesful_builds(self, fixtures):
         library = fixtures['library']
         app = fixtures['app']
 
@@ -227,9 +226,10 @@ class TestGetSuccessfulJobShas(object):
         record_job_sha('app_integration', 4, 'owner', 'library', 'sha5')
         record_job_result('app_integration', 4, False, "passed")
 
-        successful = get_successful_shas(fixtures['app_integration'].id, shas)
-        assert successful == {
-            ('sha2', 'sha3'): 2,
+        sha_statuses = get_shas(fixtures['app_integration'].id, shas)
+        assert sha_statuses == {
+            ('sha2', 'sha3'): (2, True),
+            ('sha4', 'sha5'): (4, False),
         }
 
 
@@ -243,7 +243,7 @@ class TestGetSuccessfulJobShas(object):
 
         library_unit = fixtures['library_unit']
         app_unit = fixtures['app_unit']
-        successful_job_shas = get_successful_job_shas({
+        successful_job_shas = get_job_sha_statuses({
             library_unit.id: {
                 library.id: '',
             },
@@ -252,7 +252,7 @@ class TestGetSuccessfulJobShas(object):
             },
         })
         assert successful_job_shas[library_unit.id] == {
-            ('sha1',): 1,
+            ('sha1',): (1, True),
         }
         assert successful_job_shas[app_unit.id] == {}
 
@@ -281,16 +281,16 @@ class TestGetSuccessfulJobShas(object):
         record_job_sha('app_integration2', 1, 'owner', 'library', 'sha5')
         record_job_result('app_integration2', 1, True, "passed")
 
-        successful = get_successful_job_shas({
+        successful = get_job_sha_statuses({
             app_integration.id: shas,
             app_integration2.id: shas,
         })
         assert successful == {
             app_integration.id: {
-                ('sha2', 'sha3'): 1,
+                ('sha2', 'sha3'): (1, True),
             },
             app_integration2.id: {
-                ('sha4', 'sha5'): 1,
+                ('sha4', 'sha5'): (1, True)
             },
         }
 
@@ -323,12 +323,12 @@ class TestGetSuccessfulJobShas(object):
 
         # single job
         with QueryCounter() as qc:
-            get_successful_job_shas({app_integration_id: shas})
+            get_job_sha_statuses({app_integration_id: shas})
         assert qc.count == 1
 
         # 2 jobs
         with QueryCounter() as qc:
-            get_successful_job_shas({
+            get_job_sha_statuses({
                 app_integration_id: shas,
                 app_unit_id: shas,
             })
@@ -336,17 +336,25 @@ class TestGetSuccessfulJobShas(object):
 
         # jobs with no projects
         with QueryCounter() as qc:
-            get_successful_job_shas({
+            get_job_sha_statuses({
                 app_integration_id: {},
                 app_unit_id: {},
             })
         assert qc.count == 2
 
 
-def build_check(session, project_name, sha):
+def build_checks(session, project_name, sha, job_name=None):
     clear_g_cache()
     pr = make_pr(session, project_name, sha)
-    return all(check.status for check in jenkins_check(pr))
+    def match(check):
+        if job_name is None:
+            return True
+        return job_name in check.label
+
+    return [
+        check.status for check in jenkins_check(pr)
+        if match(check)
+    ]
 
 
 def test_integration_test_check(session, fixtures, app_context):
@@ -363,7 +371,7 @@ def test_integration_test_check(session, fixtures, app_context):
     session.commit()
 
     # library integration not yet satisfied
-    assert not build_check(session, 'library', lib_sha)
+    assert not all(build_checks(session, 'library', lib_sha))
 
     # app@sha1 integration passes against library@lib_sha
     record_job_sha('app_integration', 1, 'owner', 'app', 'sha1')
@@ -371,7 +379,26 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('app_integration', 1, True, "passed")
 
     # library integration now satisfied
-    assert build_check(session, 'library', lib_sha)
+    assert all(build_checks(session, 'library', lib_sha))
+
+
+def test_statuses(session, fixtures, app_context):
+    lib_sha = "lib-proposed-sha"
+
+    # unknown
+    assert build_checks(session, 'library', lib_sha, 'library_unit') == [None]
+
+    record_job_sha('library_unit', 1, 'owner', 'library', lib_sha)
+    # still unknown
+    assert build_checks(session, 'library', lib_sha, 'library_unit') == [None]
+
+    # succeeded
+    record_job_result('library_unit', 1, True, "")
+    assert build_checks(session, 'library', lib_sha, 'library_unit') == [True]
+
+    # failed
+    record_job_result('library_unit', 1, False, "")
+    assert build_checks(session, 'library', lib_sha, 'library_unit') == [False]
 
 
 def test_check_no_jobs(session, app_context):
@@ -379,7 +406,7 @@ def test_check_no_jobs(session, app_context):
     session.add(project)
     session.commit()
 
-    assert build_check(session, 'foo', 'sha')
+    assert build_checks(session, 'foo', 'sha') == []
 
 
 # regression test
@@ -395,4 +422,4 @@ def test_dont_match_if_merge_head_is_none(session, fixtures, app_context):
         check.status for check in jenkins_check(pr)
         if 'library_unit' in check.label
     ]
-    assert statuses == [False]
+    assert statuses == [None]

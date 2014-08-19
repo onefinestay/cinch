@@ -146,6 +146,9 @@ class TestPullRequest(object):
             'pull_request': {
                 'number': 1,
                 'title': 'some title',
+                'user': {
+                    'login': 'me',
+                },
                 'head': {
                     'sha': '1',
                 },
@@ -184,6 +187,9 @@ class TestPullRequest(object):
             'pull_request': {
                 'number': 1,
                 'title': 'some title',
+                'user': {
+                    'login': 'me',
+                },
                 'head': {
                     'sha': '1',
                 },

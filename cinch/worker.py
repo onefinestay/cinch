@@ -186,7 +186,7 @@ class RepoWorker(object):
                 Project.name == project_name,
                 PullRequest.number == number,
             ).one()
-        set_relative_states(pull_request)
+        set_relative_states(pull_request, fetch=True)
 
         db.session.commit()
 

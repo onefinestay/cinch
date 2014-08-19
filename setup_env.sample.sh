@@ -28,3 +28,6 @@ export CINCH_DB_URI=
 # A comma separated list of github usernames allowed to administer
 # this cinch instance
 export CINCH_ADMIN_USERS=
+
+# URL to jenkins instance (for links to builds)
+export CINCH_JENKINS_URL=

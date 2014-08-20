@@ -14,7 +14,7 @@ export CINCH_SECRET_KEY=
 
 # For the nameko worker
 export CINCH_NAMEKO_AMQP_URI=
-export CINCH_SERVER_NAME=ci-dashboard.tintofs.com
+export CINCH_SERVER_NAME=ci-dashboard.example.com
 
 
 ## optional configuration

@@ -209,10 +209,10 @@ class RepoWorker(object):
 
         status = determine_pull_request_status(pull_request)
         detail_url = url_for(
-            'jenkins.pull_request_status',
+            'pull_request',
             project_owner=project.owner,
             project_name=project.name,
-            pr_number=pull_request.number,
+            number=pull_request.number,
         )
 
         payload = {

@@ -204,7 +204,7 @@ class RepoWorker(object):
             event_data['pull_request'])
         project = pull_request.project
 
-        if not project.update_status:
+        if not project.update_status or not pull_request.is_open:
             return
 
         status = determine_pull_request_status(pull_request)

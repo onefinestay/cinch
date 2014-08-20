@@ -140,12 +140,19 @@ def set_relative_states(pr, fetch=True):
 
 
 def determine_pull_request_status(pull_request):
+    """ Returns one of the following github compatible statuses for the given
+    pull request:
+
+    `'success'`: If all of the checks succeeded
+    `'failure'`: If any of the checks failed even if there are more checks
+                 waiting on a result
+    `'pending'`: If one or more checks cannot be calculated at the time
+    """
     # only iterate over the generator once
     checks = [check for check in run_checks(pull_request)]
 
     if all(check.status for check in checks):
         return GithubStatus.SUCCESS
-    # TODO: fail fast or wait till build is complete before recording failure
     elif any(check.status is False for check in checks):
         return GithubStatus.FAILURE
     elif any(check.status is None for check in checks):

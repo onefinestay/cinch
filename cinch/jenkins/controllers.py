@@ -64,7 +64,13 @@ def get_or_create_build(job, build_number):
     return build
 
 
-def get_prs_for_build(build):
+def handle_build_updated(build):
+    """ This will dispatch events for are all the prs that *might* be affected
+    by a change in status of this build. If this build is not for a pull
+    request against master shas in each of the other projects, the worker will
+    determine the status has not changed.
+    """
+
     # we need to see if any of the shas associated with this build match any
     # open pull requests
     session = db.session
@@ -80,7 +86,12 @@ def get_prs_for_build(build):
         ),
     )
 
-    return pulls
+    with dispatcher() as dispatch:
+        for pull in pulls:
+            event = PullRequestStatusUpdated(data={
+                'pull_request': (pull.number, pull.project_id),
+            })
+            dispatch(event)
 
 
 def record_job_sha(job_name, build_number, project_owner, project_name, sha):
@@ -113,18 +124,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     build_sha.sha = sha
     session.commit()
 
-    # These are all the prs that *might* be affected by the status of this
-    # build. If this build is not for a pull request against master shas in
-    # each of the other projects, the worker will determine the status has not
-    # changed.
-    pulls = get_prs_for_build(build)
-
-    with dispatcher() as dispatch:
-        for pull in pulls:
-            event = PullRequestStatusUpdated(data={
-                'pull_request': (pull.number, pull.project_id),
-            })
-            dispatch(event)
+    handle_build_updated(build)
 
 
 def record_job_result(job_name, build_number, success, status):
@@ -141,21 +141,9 @@ def record_job_result(job_name, build_number, success, status):
 
     build.success = success
     build.status = status
-
     db.session.commit()
 
-    # These are all the prs that *might* be affected by the status of this
-    # build. If this build is not for a pull request against master shas in
-    # each of the other projects, the worker will determine the status has not
-    # changed.
-    pulls = get_prs_for_build(build)
-
-    with dispatcher() as dispatch:
-        for pull in pulls:
-            event = PullRequestStatusUpdated(data={
-                'pull_request': (pull.number, pull.project_id),
-            })
-            dispatch(event)
+    handle_build_updated(build)
 
 
 def get_job_master_shas():

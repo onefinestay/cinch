@@ -64,13 +64,7 @@ def get_or_create_build(job, build_number):
     return build
 
 
-def handle_build_updated(build):
-    """ This will dispatch events for are all the prs that *might* be affected
-    by a change in status of this build. If this build is not for a pull
-    request against master shas in each of the other projects, the worker will
-    determine the status has not changed.
-    """
-
+def get_prs_for_build(build):
     # we need to see if any of the shas associated with this build match any
     # open pull requests
     session = db.session
@@ -85,6 +79,18 @@ def handle_build_updated(build):
             PullRequest.merge_head.in_(build_shas)
         ),
     )
+
+    return pulls
+
+
+def handle_build_updated(build):
+    """ This will dispatch events for are all the prs that *might* be affected
+    by a change in status of this build. If this build is not for a pull
+    request against master shas in each of the other projects, the worker will
+    determine the status has not changed.
+    """
+
+    pulls = get_prs_for_build(build)
 
     with dispatcher() as dispatch:
         for pull in pulls:

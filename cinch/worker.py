@@ -1,12 +1,18 @@
 """Nameko worker for async handling of updates"""
 
+from contextlib import contextmanager
+from functools import wraps
 import logging
 
+from flask import url_for
+from flask.ext.github import GitHub
 from nameko.containers import MAX_WORKERS_CONFIG_KEY
 from nameko.events import Event, event_handler
 from nameko.messaging import AMQP_URI_CONFIG_KEY
+from nameko.standalone.events import event_dispatcher
 
 from cinch import db
+from cinch.check import run_checks
 from cinch.git import Repo
 from cinch.models import Project, PullRequest
 
@@ -15,6 +21,22 @@ _logger = logging.getLogger(__name__)
 
 
 from cinch import app
+
+github = GitHub(app)
+
+
+class GithubStatus(object):
+    PENDING = 'pending'
+    SUCCESS = 'success'
+    ERROR = 'error'
+    FAILURE = 'failure'
+
+    descriptions = {
+        PENDING: 'Rolling, rolling, rolling',
+        SUCCESS: 'Great success, ready for release',
+        ERROR: 'Something went terribly wrong',
+        FAILURE: 'Better luck next time'
+    }
 
 
 class MasterMoved(Event):
@@ -47,6 +69,18 @@ class PullRequestMoved(Event):
     type = 'pull_request_moved'
 
 
+class PullRequestStatusUpdated(Event):
+    """ The build status for this pull request has changed.
+
+    :Event data:
+        pull_request : (int, int)
+            The pull request number and project id for looking up this pull
+            request
+    """
+
+    type = 'pull_request_status_updated'
+
+
 def get_nameko_config():
     amqp_uri = app.config.get('NAMEKO_AMQP_URI')
 
@@ -61,6 +95,26 @@ def get_nameko_config():
         # we're not threadsafe, but don't need concurrency, only async
         MAX_WORKERS_CONFIG_KEY: 1,
     }
+
+
+@contextmanager
+def dispatcher():
+    config = get_nameko_config()
+    with event_dispatcher('cinch', config) as dispatch:
+        yield dispatch
+
+
+def worker_app_context(func):
+    """ Allows offline generation of urls using `url_for` if a `SERVER_NAME`
+    was provided as part of the application configuration.
+    """
+
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        with app.app_context():
+            return func(*args, **kwargs)
+
+    return wrapped
 
 
 def set_relative_states(pr, fetch=True):
@@ -83,6 +137,26 @@ def set_relative_states(pr, fetch=True):
     pr.ahead_of_master = ahead
     pr.is_mergeable = is_mergeable
     pr.merge_head = merge_head
+
+
+def determine_pull_request_status(pull_request):
+    """ Returns one of the following github compatible statuses for the given
+    pull request:
+
+    `'success'`: If all of the checks succeeded
+    `'failure'`: If any of the checks failed even if there are more checks
+                 waiting on a result
+    `'pending'`: If one or more checks cannot be calculated at the time
+    """
+    # only iterate over the generator once
+    checks = [check for check in run_checks(pull_request)]
+
+    if all(check.status for check in checks):
+        return GithubStatus.SUCCESS
+    elif any(check.status is False for check in checks):
+        return GithubStatus.FAILURE
+    elif any(check.status is None for check in checks):
+        return GithubStatus.PENDING
 
 
 class RepoWorker(object):
@@ -120,4 +194,38 @@ class RepoWorker(object):
                 PullRequest.number == number,
             ).one()
         set_relative_states(pull_request, fetch=True)
+
         db.session.commit()
+
+    @event_handler('cinch', PullRequestStatusUpdated, reliable_delivery=True)
+    @worker_app_context
+    def pull_request_status_updated(self, event_data):
+        pull_request = db.session.query(PullRequest).get(
+            event_data['pull_request'])
+        project = pull_request.project
+
+        if not project.update_status or not pull_request.is_open:
+            return
+
+        status = determine_pull_request_status(pull_request)
+        detail_url = url_for(
+            'pull_request',
+            project_owner=project.owner,
+            project_name=project.name,
+            number=pull_request.number,
+            _scheme=app.config['URL_SCHEME'],
+        )
+
+        payload = {
+            "state": status,
+            "target_url": detail_url,
+            "description": GithubStatus.descriptions.get(status, ''),
+            "context": "continuous-integration/cinch"
+        }
+
+        status_uri = 'repos/{owner}/{project}/statuses/{sha}'.format(
+            owner=project.owner,
+            project=project.name,
+            sha=pull_request.head,
+        )
+        github.post(status_uri, payload)

@@ -3,13 +3,12 @@ from __future__ import absolute_import
 from collections import namedtuple
 import logging
 from flask import request
-from nameko.standalone.events import event_dispatcher
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app, db
 from cinch.models import Project, PullRequest
 from cinch.check import check, CheckStatus
-from cinch.worker import MasterMoved, PullRequestMoved, get_nameko_config
+from cinch.worker import MasterMoved, PullRequestMoved, dispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +118,7 @@ def get_project_from_repo_info(repo_info):
 
 
 @app.route('/api/github/update', methods=['POST'])
-def handle_github_webhok():
+def handle_github_webhook():
     """We always return a 200 to keep github happy, but include info about
     actions taken
     """
@@ -162,8 +161,7 @@ def handle_push(parser):
 
     db.session.commit()
 
-    config = get_nameko_config()
-    with event_dispatcher('cinch', config) as dispatch:
+    with dispatcher() as dispatch:
         event = MasterMoved(data={
             'owner': project.owner,
             'name': project.name,
@@ -205,8 +203,7 @@ def handle_pull_request(parser):
     pr.merge_head = None
     db.session.commit()
 
-    config = get_nameko_config()
-    with event_dispatcher('cinch', config) as dispatch:
+    with dispatcher() as dispatch:
         event = PullRequestMoved(data={
             'owner': project.owner,
             'name': project.name,

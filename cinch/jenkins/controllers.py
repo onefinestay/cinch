@@ -3,13 +3,14 @@ from __future__ import absolute_import
 from collections import OrderedDict, namedtuple
 
 from flask import url_for, g
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app
 from cinch.check import check, CheckStatus
 from cinch.models import db, Project, PullRequest
+from cinch.worker import dispatcher, PullRequestStatusUpdated
 from .models import Job, Build, BuildSha
 from .exceptions import UnknownProject, UnknownJob
 
@@ -63,10 +64,46 @@ def get_or_create_build(job, build_number):
     return build
 
 
+def get_prs_for_build(build):
+    # we need to see if any of the shas associated with this build match any
+    # open pull requests
+    session = db.session
+
+    build_shas = session.query(BuildSha.sha).filter_by(build=build).all()
+    build_shas = [build_sha.sha for build_sha in build_shas]
+
+    pulls = session.query(PullRequest).filter(
+        PullRequest.is_open == True,
+        or_(
+            PullRequest.head.in_(build_shas),
+            PullRequest.merge_head.in_(build_shas)
+        ),
+    )
+
+    return pulls
+
+
+def handle_build_updated(build):
+    """ This will dispatch events for are all the prs that *might* be affected
+    by a change in status of this build. If this build is not for a pull
+    request against master shas in each of the other projects, the worker will
+    determine the status has not changed.
+    """
+
+    pulls = get_prs_for_build(build)
+
+    with dispatcher() as dispatch:
+        for pull in pulls:
+            event = PullRequestStatusUpdated(data={
+                'pull_request': (pull.number, pull.project_id),
+            })
+            dispatch(event)
+
+
 def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     """ The Jenkins notifications plugin provides no good way to include
     metadata generate during a build (e.g. resolved git refs) in the
-    notification body. This enables an enpoint to collect such data _during_
+    notification body. This enables an endpoint to collect such data _during_
     the build instead
     """
 
@@ -93,6 +130,8 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
     build_sha.sha = sha
     session.commit()
 
+    handle_build_updated(build)
+
 
 def record_job_result(job_name, build_number, success, status):
     """ Record status of a build. Shas should already have been provided to
@@ -108,8 +147,9 @@ def record_job_result(job_name, build_number, success, status):
 
     build.success = success
     build.status = status
-
     db.session.commit()
+
+    handle_build_updated(build)
 
 
 def get_job_master_shas():

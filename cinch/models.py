@@ -15,6 +15,9 @@ class Project(db.Model):
     name = db.Column(db.String(STRING_LENGTH), nullable=False)
     master_sha = db.Column(db.String(40), nullable=True)
 
+    # A flag to determine whether cinch should post status updates to github
+    update_status = db.Column(db.Boolean, nullable=False, default=False)
+
     def web_url(self):
         return "https://github.com/{}/{}".format(self.owner, self.name)
 

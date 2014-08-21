@@ -213,6 +213,7 @@ class RepoWorker(object):
             project_owner=project.owner,
             project_name=project.name,
             number=pull_request.number,
+            _scheme=app.config['URL_SCHEME'],
         )
 
         payload = {

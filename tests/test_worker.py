@@ -147,7 +147,8 @@ class TestPullRequestStatusUpdated(object):
             'pull_request': (pull_request.number, pull_request.project_id),
         }
 
-        target_url = 'http://{}/pull_request/{}/{}/{}'.format(
+        target_url = '{}://{}/pull_request/{}/{}/{}'.format(
+            app.config['URL_SCHEME'],
             app.config['SERVER_NAME'],
             pull_request.project.owner,
             pull_request.project.name,

@@ -184,6 +184,7 @@ class TestPullRequestStatusUpdated(object):
         repo = fake_repo.from_local_repo('owner', 'name')
         repo.compare_pr.return_value = (0, 10)
         repo.is_mergeable.return_value = True
+        repo.merge_head.return_value = None
 
         worker.pull_request_moved({
             'name': 'my_name',

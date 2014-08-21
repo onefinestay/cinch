@@ -1,4 +1,6 @@
+from mock import patch
 import pytest
+
 
 @pytest.fixture
 def fixtures(session):
@@ -53,3 +55,9 @@ def fixtures(session):
     session.commit()
 
     return created
+
+
+@pytest.yield_fixture(autouse=True)
+def mock_dispatcher():
+    with patch('cinch.jenkins.controllers.dispatcher') as dispatcher:
+        yield dispatcher

@@ -14,6 +14,7 @@ def pytest_configure(config):
     if db_uri:
         os.environ['CINCH_DB_URI'] = db_uri
 
+    # turn sqlalchemy warnings about empty `in_` clauses into errors
     warnings.simplefilter("error", category=sqlalchemy.exc.SAWarning)
 
 

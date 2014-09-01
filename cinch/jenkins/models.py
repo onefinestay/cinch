@@ -7,6 +7,9 @@ class JobProject(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), primary_key=True)
     project_id = db.Column(
         db.Integer, db.ForeignKey('projects.id'), primary_key=True)
+    # may optionally be used to specify the name of the parameter this jenkins
+    # job uses to set the sha for this project. used when triggering jobs for
+    # pull requests for the non-pr projects
     parameter_name = db.Column(db.String(STRING_LENGTH), nullable=True)
 
 

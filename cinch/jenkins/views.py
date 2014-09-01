@@ -7,6 +7,7 @@ import requests
 from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app, db
+from cinch.auth.decorators import requires_auth
 from cinch.exceptions import UnknownProject
 from cinch.models import PullRequest, Project
 from .controllers import record_job_result, record_job_sha, all_open_prs
@@ -86,6 +87,7 @@ def build_sha():
 
 
 @jenkins.route('/pr/<project_owner>/<project_name>/<pr_number>')
+@requires_auth
 def pull_request_status(project_owner, project_name, pr_number):
     session = db.session
 
@@ -137,6 +139,7 @@ def pull_request_status(project_owner, project_name, pr_number):
 
 
 @jenkins.route('/api/jobs/trigger', methods=['POST'])
+@requires_auth
 def trigger_build():
     session = db.session
 

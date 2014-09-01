@@ -71,6 +71,10 @@ def get_prs_for_build(build):
     session = db.session
 
     build_shas = session.query(BuildSha.sha).filter_by(build=build).all()
+
+    if not build_shas:
+        return []
+
     build_shas = [build_sha.sha for build_sha in build_shas]
 
     pulls = session.query(PullRequest).filter(

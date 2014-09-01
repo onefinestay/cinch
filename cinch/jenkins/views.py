@@ -158,7 +158,6 @@ def trigger_build():
         abort(404, "Unknown pull request {}/{}/{}".format(
             project_owner, project_name, pull_request_number))
 
-
     shas = {}
     shas = {
         project: project.master_sha

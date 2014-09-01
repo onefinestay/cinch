@@ -179,8 +179,11 @@ def get_job_build_query(job_id, project_ids):
         `project_ids`
     """
     session = db.session
-    query = session.query(Build.id, Build.build_number, Build.success
-        ).join(Job).filter(Job.id == job_id)
+    query = (
+        session.query(Build.id, Build.build_number, Build.success)
+        .join(Job)
+        .filter(Job.id == job_id)
+    )
     aliases = []
 
     for project_id in project_ids:

@@ -232,7 +232,6 @@ class TestGetSuccessfulJobShas(object):
             ('sha4', 'sha5'): (4, False),
         }
 
-
     def test_other_job_ignored(self, fixtures):
         library = fixtures['library']
         app = fixtures['app']
@@ -297,7 +296,6 @@ class TestGetSuccessfulJobShas(object):
     def test_one_query_per_job(self, session, fixtures):
         n_queries = [0]
         foo = []
-
 
         @event.listens_for(Engine, "after_cursor_execute")
         def after_cursor_execute(*args, **kwargs):
@@ -379,7 +377,7 @@ def test_check_no_jobs(session, app_context):
     session.add(project)
     session.commit()
 
-    assert build_check(session, 'foo', 'sha') == True
+    assert build_check(session, 'foo', 'sha') is True
 
 
 # regression test

@@ -33,7 +33,6 @@ def job_status(app_context, pull_request, job_name):
     return job_status_map[job_name]
 
 
-
 def test_record_sha(fixtures, app_context):
     client = app_context.test_client()
     data = {

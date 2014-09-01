@@ -35,3 +35,5 @@ admin = Admin(app)
 import cinch.views
 import cinch.auth.views
 import cinch.github
+
+cinch  # pyflakes

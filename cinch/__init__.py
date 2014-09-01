@@ -1,5 +1,4 @@
 import os
-from urlparse import urlparse
 
 from flask import Flask
 from flask.ext.admin import Admin
@@ -25,13 +24,6 @@ app.secret_key = app.config['SECRET_KEY']
 
 if 'SENTRY_DSN' in app.config:
     Sentry(app, dsn=app.config['SENTRY_DSN'])
-
-if 'SERVER_URL' in app.config:
-    # we need to split this into a URL_SCHEME and a SERVER_NAME variable so
-    # we can generate urls offline.
-    server_url = urlparse(app.config['SERVER_URL'])
-    app.config['URL_SCHEME'] = server_url.scheme
-    app.config['SERVER_NAME'] = server_url.netloc
 
 db_uri = app.config.get('DB_URI', DEFAULT_DB_URI)
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri

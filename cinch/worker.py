@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 from functools import wraps
 import logging
+from urlparse import urlparse
 
 from flask import url_for
 from flask.ext.github import GitHub
@@ -23,6 +24,16 @@ _logger = logging.getLogger(__name__)
 from cinch import app
 
 github = GitHub(app)
+
+
+if 'SERVER_URL' in app.config:
+    # we need to split this into a URL_SCHEME and a SERVER_NAME variable so
+    # we can generate urls offline.
+    # we only need this in the worker, and setting server_name makes flask
+    # 404 if accessed via other name (e.g. localhost)
+    server_url = urlparse(app.config['SERVER_URL'])
+    app.config['URL_SCHEME'] = server_url.scheme
+    app.config['SERVER_NAME'] = server_url.netloc
 
 
 class GithubStatus(object):

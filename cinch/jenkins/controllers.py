@@ -7,7 +7,6 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.orm.exc import NoResultFound
 
-from cinch import app
 from cinch.check import check, CheckStatus
 from cinch.controllers import get_project
 from cinch.models import db, PullRequest
@@ -298,7 +297,6 @@ def jenkins_check(pull_request):
     else:
         jobs = []
 
-    # TODO: one url per job
     pull_request_status_url = url_for(
         'jenkins.pull_request_status',
         project_owner=pull_request.project.owner,
@@ -306,26 +304,22 @@ def jenkins_check(pull_request):
         pr_number=pull_request.number,
     )
 
-    check_statuses = []
-    jenkins_url = app.config.get('JENKINS_URL', 'http://jenkins.example.com')
-
-    for job in sorted(jobs, key=lambda j: j.name):
+    def get_status(job):
         build_number, status = pr_map[pull_request][job.id]
-
         if build_number is None:
-            status = None
-            label = "Jenkins: {}".format(job.name)
-            url = pull_request_status_url
-        else:
-            label = "Jenkins: {}: {}".format(job.name, build_number)
-            url = "{}/job/{}/{}/".format(jenkins_url, job.name, build_number)
+            return None
+        return status
 
-        check_statuses.append(
-            CheckStatus(
-                label=label,
-                status=status,
-                url=url,
-            )
-        )
+    statuses = map(get_status, jobs)
+    if all(statuses):
+        status = True
+    elif any(status is False for status in statuses):
+        status = False
+    else:
+        status = None
 
-    return check_statuses
+    return CheckStatus(
+        label='Jenkins',
+        status=status,
+        url=pull_request_status_url,
+    )

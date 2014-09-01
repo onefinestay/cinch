@@ -343,18 +343,10 @@ class TestGetSuccessfulJobShas(object):
         assert qc.count == 2
 
 
-def build_checks(session, project_name, sha, job_name=None):
+def build_check(session, project_name, sha):
     clear_g_cache()
     pr = make_pr(session, project_name, sha)
-    def match(check):
-        if job_name is None:
-            return True
-        return job_name in check.label
-
-    return [
-        check.status for check in jenkins_check(pr)
-        if match(check)
-    ]
+    return jenkins_check(pr).status
 
 
 def test_integration_test_check(session, fixtures, app_context):
@@ -371,7 +363,7 @@ def test_integration_test_check(session, fixtures, app_context):
     session.commit()
 
     # library integration not yet satisfied
-    assert not all(build_checks(session, 'library', lib_sha))
+    assert not build_check(session, 'library', lib_sha)
 
     # app@sha1 integration passes against library@lib_sha
     record_job_sha('app_integration', 1, 'owner', 'app', 'sha1')
@@ -379,26 +371,7 @@ def test_integration_test_check(session, fixtures, app_context):
     record_job_result('app_integration', 1, True, "passed")
 
     # library integration now satisfied
-    assert all(build_checks(session, 'library', lib_sha))
-
-
-def test_statuses(session, fixtures, app_context):
-    lib_sha = "lib-proposed-sha"
-
-    # unknown
-    assert build_checks(session, 'library', lib_sha, 'library_unit') == [None]
-
-    record_job_sha('library_unit', 1, 'owner', 'library', lib_sha)
-    # still unknown
-    assert build_checks(session, 'library', lib_sha, 'library_unit') == [None]
-
-    # succeeded
-    record_job_result('library_unit', 1, True, "")
-    assert build_checks(session, 'library', lib_sha, 'library_unit') == [True]
-
-    # failed
-    record_job_result('library_unit', 1, False, "")
-    assert build_checks(session, 'library', lib_sha, 'library_unit') == [False]
+    assert build_check(session, 'library', lib_sha)
 
 
 def test_check_no_jobs(session, app_context):
@@ -406,7 +379,7 @@ def test_check_no_jobs(session, app_context):
     session.add(project)
     session.commit()
 
-    assert build_checks(session, 'foo', 'sha') == []
+    assert build_check(session, 'foo', 'sha') == True
 
 
 # regression test
@@ -418,8 +391,4 @@ def test_dont_match_if_merge_head_is_none(session, fixtures, app_context):
     pr = make_pr(session, 'library', 'sha')
     pr.merge_head = None
 
-    statuses = [
-        check.status for check in jenkins_check(pr)
-        if 'library_unit' in check.label
-    ]
-    assert statuses == [None]
+    assert jenkins_check(pr).status is None

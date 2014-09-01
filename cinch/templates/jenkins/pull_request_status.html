@@ -1,42 +1,57 @@
 {% extends "layout.html" %}
 {% block body %}
 
-<h1>
+<h2>
 {{ pull_request.project.name }} #{{ pull_request.number }}:
 {{ pull_request.title }}
-</h1>
+</h2>
 
-<h3>Head: <code>{{ pull_request.head }}</code></h3>
-<h3>Merge head: <code>{{ pull_request.merge_head }}</code></h3>
+<h4>Head: <code>{{ pull_request.head }}</code></h4>
+<h4>Merge head: <code>{{ pull_request.merge_head }}</code></h4>
 
-{% for job in jobs %}
-<h2>Job: <tt>{{ job.name }}</tt></h2>
+<p>&nbsp;</p>
 
-    <table border="1" cellspacing="1" class="status_table">
-    <tr>
-    <th>Job number</th>
-    <th>Status</th>
-    {% for project in job.ordered_projects() %}
-        <th>{{ project.name }} (master: <code>{{ project.master_sha }}</code>)</th>
-    {% endfor %}
-    </tr>
+<p>
+{% for job_status in job_statuses %}
 
-    {% for build_number, was_success, shas in job_builds[job] %}
-    <tr>
-    <td>{{ build_number }}</td>
-    <td>
-        <span class="badge badge-{% if was_success %}success{% else %}warning{% endif %}">
-    {% if was_success %}Passed{% else %}Failed{% endif %}
-        </span>
-    </td>
-        {% for sha in shas %}
-            <td><code>{{ sha }}</code></td>
-        {% endfor %}
-    </tr>
-    {% endfor %}
-    </table>
-
+<div class="status-holder">
+    <a href="{{ job_status.url }}" class="label label-{{ job_status.status|status_label }}">{{ job_status.label }}</a>
+    <a href="" class="rebuild-link" data-job-name="{{ job_status.job_name }}">rebuild</a>
+    <span class="spinner-holder"></span>
+</div>
 
 {% endfor %}
+</p>
 
+{% endblock %}
+
+{% block js %}
+<script>
+
+var project_owner = "{{ pull_request.project.owner }}";
+var project_name = "{{ pull_request.project.name }}";
+var pull_request_number = "{{ pull_request.number }}";
+var url = "{{ rebuild_url }}";
+
+$('body').on('click', '.rebuild-link', function(event) {
+    var $target = $(event.target);
+    var job_name = $target.data('job-name');
+
+    var spinner_holder = $target.closest('.status-holder').find('.spinner-holder')
+    spinner_holder.addClass('spinner');
+
+    $.post(url, {
+        project_owner: project_owner,
+        project_name: project_name,
+        pull_request_number: pull_request_number,
+        job_name: job_name
+    }).then(function() {
+        spinner_holder.removeClass('spinner');
+    });
+
+    event.preventDefault();
+});
+
+
+</script>
 {% endblock %}

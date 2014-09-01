@@ -1,13 +1,37 @@
 import json
 
 from flask import url_for
+from mock import patch
 
 from cinch import db
 from cinch.models import PullRequest
 from cinch.jenkins import views
-from cinch.jenkins.controllers import jenkins_check
+from cinch.jenkins.controllers import (
+    clear_g_cache, record_job_sha, record_job_result)
 
 views  # pyflakes
+
+
+def job_status(app_context, pull_request, job_name):
+    clear_g_cache()
+    client = app_context.test_client()
+    url = url_for(
+        'jenkins.pull_request_status',
+        project_owner=pull_request.project.owner,
+        project_name=pull_request.project.name,
+        pr_number=pull_request.number,
+    )
+    with patch('cinch.jenkins.views.render_template') as render:
+        render.return_value = ''
+        client.get(url)
+    args, kwargs = render.call_args
+    job_statuses = kwargs['job_statuses']
+    job_status_map = {
+        job_status['job_name']: job_status['status']
+        for job_status in job_statuses
+    }
+    return job_status_map[job_name]
+
 
 
 def test_record_sha(fixtures, app_context):
@@ -130,11 +154,7 @@ def test_build_with_shas(fixtures, app_context):
 
     db.session.commit()
 
-    statuses = [
-        check.status for check in jenkins_check(pull_request)
-        if 'app_integration' in check.label
-    ]
-    assert statuses == [True]
+    assert job_status(app_context, pull_request, 'app_integration') is True
 
 
 def test_pull_request_view(fixtures, app_context):
@@ -160,3 +180,34 @@ def test_pull_request_view(fixtures, app_context):
     )
     response = client.get(url)
     assert response.status_code == 200
+
+
+def test_statuses(session, fixtures, app_context):
+    library = fixtures['library']
+    lib_sha = "lib-proposed-sha"
+
+    pull_request = PullRequest(
+        is_open=True,
+        number=1,
+        project=library,
+        head=lib_sha,
+        owner='',
+        title='',
+    )
+    db.session.add(pull_request)
+    db.session.commit()
+
+    # unknown
+    assert job_status(app_context, pull_request, 'library_unit') is None
+
+    record_job_sha('library_unit', 1, 'owner', 'library', lib_sha)
+    # still unknown
+    assert job_status(app_context, pull_request, 'library_unit') is None
+
+    # succeeded
+    record_job_result('library_unit', 1, True, "")
+    assert job_status(app_context, pull_request, 'library_unit') is True
+
+    # failed
+    record_job_result('library_unit', 1, False, "")
+    assert job_status(app_context, pull_request, 'library_unit') is False

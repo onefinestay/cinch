@@ -11,11 +11,6 @@ from cinch.worker import MasterMoved, PullRequestMoved
 URL = '/api/github/update'
 
 
-@pytest.fixture(autouse=True)
-def propagate_exceptions():
-    app.config['PROPAGATE_EXCEPTIONS'] = True
-
-
 @pytest.yield_fixture(autouse=True)
 def mock_dispatch():
     with patch('cinch.github.dispatcher') as dispatcher:

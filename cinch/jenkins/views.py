@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 jenkins = Blueprint('jenkins', __name__)
 
 
+JENKINS_BUILD_TEMPLATE = "{base_url}/job/{job_name}/{build_number}/"
+JENKINS_TRIGGER_TEMPLATE = "{base_url}/job/{job_name}/buildWithParameters"
+
+
 @jenkins.route('/api/build_status', methods=['POST'])
 def build_status():
     """ Handle updates for jenkins status from the jenkins
@@ -86,6 +90,14 @@ def build_sha():
     return 'OK', 200
 
 
+def get_jenkins_url():
+    jenkins_url = app.config.get('JENKINS_URL')
+    if jenkins_url is None:
+        logger.warn("Config key `JENKINS_URL` missing")
+        jenkins_url = 'http://jenkins.example.com'
+    return jenkins_url
+
+
 @jenkins.route('/pr/<project_owner>/<project_name>/<pr_number>')
 @requires_auth
 def pull_request_status(project_owner, project_name, pr_number):
@@ -105,10 +117,7 @@ def pull_request_status(project_owner, project_name, pr_number):
     jobs = pull_request_project.jobs
 
     job_statuses = []
-    jenkins_url = app.config.get('JENKINS_URL')
-    if jenkins_url is None:
-        logger.warn("Config key `JENKINS_URL` missing")
-        jenkins_url = 'http://jenkins.example.com'
+    jenkins_url = get_jenkins_url()
 
     for job in sorted(jobs, key=lambda j: j.name):
         build_number, status = pr_map[pull_request][job.id]
@@ -119,7 +128,11 @@ def pull_request_status(project_owner, project_name, pr_number):
             url = None
         else:
             label = "{}: {}".format(job.name, build_number)
-            url = "{}/job/{}/{}/".format(jenkins_url, job.name, build_number)
+            url = JENKINS_BUILD_TEMPLATE.format(
+                base_url=jenkins_url,
+                job_name=job.name,
+                build_number=build_number,
+            )
 
         job_statuses.append(
             dict(
@@ -182,8 +195,8 @@ def trigger_build():
         for project, sha in shas.items()
     }
 
-    jenkins_url = app.config.get('JENKINS_URL', 'http://jenkins.example.com')
-    trigger_url = "{}/job/{}/buildWithParameters".format(jenkins_url, job.name)
+    jenkins_url = get_jenkins_url()
+    trigger_url = JENKINS_TRIGGER_TEMPLATE.format(
+        base_url=jenkins_url, job_name=job.name)
     requests.post(trigger_url, data=jenkins_params)
-    # print trigger_url, jenkins_params
     return "ok"

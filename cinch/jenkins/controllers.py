@@ -9,10 +9,11 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cinch import app
 from cinch.check import check, CheckStatus
-from cinch.models import db, Project, PullRequest
+from cinch.controllers import get_project
+from cinch.models import db, PullRequest
 from cinch.worker import dispatcher, PullRequestStatusUpdated
 from .models import Job, Build, BuildSha
-from .exceptions import UnknownProject, UnknownJob
+from .exceptions import UnknownJob
 
 
 # for pep8
@@ -116,12 +117,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
 
     build = get_or_create_build(job, build_number)
 
-    try:
-        project = session.query(Project).filter(
-            Project.owner == project_owner, Project.name == project_name
-        ).one()
-    except NoResultFound:
-        raise UnknownProject(project_owner, project_name)
+    project = get_project(project_owner, project_name)
 
     build_sha = session.query(BuildSha).get((build.id, project.id))
     if build_sha is None:

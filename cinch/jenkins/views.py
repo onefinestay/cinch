@@ -5,7 +5,8 @@ import logging
 from flask import Blueprint, request, abort, render_template
 from sqlalchemy import desc
 
-from cinch import db
+from cinch import app, db
+from cinch.exceptions import UnknownProject
 from cinch.models import PullRequest, Project
 from .controllers import record_job_result, record_job_sha, get_job_build_query
 from .exceptions import UnknownProject, UnknownJob

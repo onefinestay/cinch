@@ -174,8 +174,9 @@ def trigger_build():
             PullRequest.number == pull_request_number,
         ).one()
     except NoResultFound:
-        abort(404, "Unknown pull request {}/{}/{}".format(
-            project_owner, project_name, pull_request_number))
+        github_url = 'https://github.com'
+        abort(404, "Unknown pull request {}/{}/{}/{}".format(
+            github_url, project_owner, project_name, pull_request_number))
 
     shas = {}
     shas = {

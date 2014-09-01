@@ -103,7 +103,10 @@ def pull_request_status(project_owner, project_name, pr_number):
     jobs = pull_request_project.jobs
 
     job_statuses = []
-    jenkins_url = app.config.get('JENKINS_URL', 'http://jenkins.example.com')
+    jenkins_url = app.config.get('JENKINS_URL')
+    if jenkins_url is None:
+        logger.warn("Config key `JENKINS_URL` missing")
+        jenkins_url = 'http://jenkins.example.com'
 
     for job in sorted(jobs, key=lambda j: j.name):
         build_number, status = pr_map[pull_request][job.id]

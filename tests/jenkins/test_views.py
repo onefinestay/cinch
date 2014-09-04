@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import json
 
 from flask import url_for
@@ -12,6 +13,13 @@ from cinch.jenkins.controllers import (
 views  # pyflakes
 
 
+@contextmanager
+def fake_auth():
+    with patch('cinch.auth.decorators.is_authenticated') as is_authenticated:
+        is_authenticated.return_value = True
+        yield
+
+
 def job_status(app_context, pull_request, job_name):
     clear_g_cache()
     client = app_context.test_client()
@@ -23,7 +31,8 @@ def job_status(app_context, pull_request, job_name):
     )
     with patch('cinch.jenkins.views.render_template') as render:
         render.return_value = ''
-        client.get(url)
+        with fake_auth():
+            client.get(url)
     args, kwargs = render.call_args
     job_statuses = kwargs['job_statuses']
     job_status_map = {
@@ -177,7 +186,8 @@ def test_pull_request_view(fixtures, app_context):
         project_name='app',
         pr_number='1',
     )
-    response = client.get(url)
+    with fake_auth():
+        response = client.get(url)
     assert response.status_code == 200
 
 

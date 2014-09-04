@@ -3,7 +3,18 @@ from flask.ext.github import GitHub
 
 from cinch import app
 
-github = GitHub(app)
+class WorkerGitHub(GitHub):
+    """for use by worker methods. uses the github token from app.config
+
+    .. warning::
+        do not use in any web-exposed views; they should use the
+        user's token, as provided by `cinch.auth.views.token_getter`
+    """
+    def get_access_token(self):
+        return self.app.config['GITHUB_TOKEN']
+
+
+github = WorkerGitHub(app)
 
 
 @github.access_token_getter

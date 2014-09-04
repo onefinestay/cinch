@@ -83,3 +83,12 @@
     .status_table td, .status_table th {
         padding: 5px;
     }
+
+    .spinner {
+        display: inline-block;
+        background-image: url('../img/ajax-loader.gif');
+        background-repeat: no-repeat;
+        width: 16px;
+        height: 1em;
+        vertical-align: middle;
+    }

@@ -7,12 +7,12 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.orm.exc import NoResultFound
 
-from cinch import app
 from cinch.check import check, CheckStatus
-from cinch.models import db, Project, PullRequest
+from cinch.controllers import get_project
+from cinch.models import db, PullRequest
 from cinch.worker import dispatcher, PullRequestStatusUpdated
 from .models import Job, Build, BuildSha
-from .exceptions import UnknownProject, UnknownJob
+from .exceptions import UnknownJob
 
 
 # for pep8
@@ -70,6 +70,10 @@ def get_prs_for_build(build):
     session = db.session
 
     build_shas = session.query(BuildSha.sha).filter_by(build=build).all()
+
+    if not build_shas:
+        return []
+
     build_shas = [build_sha.sha for build_sha in build_shas]
 
     pulls = session.query(PullRequest).filter(
@@ -116,12 +120,7 @@ def record_job_sha(job_name, build_number, project_owner, project_name, sha):
 
     build = get_or_create_build(job, build_number)
 
-    try:
-        project = session.query(Project).filter(
-            Project.owner == project_owner, Project.name == project_name
-        ).one()
-    except NoResultFound:
-        raise UnknownProject(project_owner, project_name)
+    project = get_project(project_owner, project_name)
 
     build_sha = session.query(BuildSha).get((build.id, project.id))
     if build_sha is None:
@@ -180,8 +179,11 @@ def get_job_build_query(job_id, project_ids):
         `project_ids`
     """
     session = db.session
-    query = session.query(Build.id, Build.build_number, Build.success
-        ).join(Job).filter(Job.id == job_id)
+    query = (
+        session.query(Build.id, Build.build_number, Build.success)
+        .join(Job)
+        .filter(Job.id == job_id)
+    )
     aliases = []
 
     for project_id in project_ids:
@@ -298,7 +300,6 @@ def jenkins_check(pull_request):
     else:
         jobs = []
 
-    # TODO: one url per job
     pull_request_status_url = url_for(
         'jenkins.pull_request_status',
         project_owner=pull_request.project.owner,
@@ -306,26 +307,22 @@ def jenkins_check(pull_request):
         pr_number=pull_request.number,
     )
 
-    check_statuses = []
-    jenkins_url = app.config.get('JENKINS_URL', 'http://jenkins.example.com')
-
-    for job in sorted(jobs, key=lambda j: j.name):
+    def get_status(job):
         build_number, status = pr_map[pull_request][job.id]
-
         if build_number is None:
-            status = None
-            label = "Jenkins: {}".format(job.name)
-            url = pull_request_status_url
-        else:
-            label = "Jenkins: {}: {}".format(job.name, build_number)
-            url = "{}/job/{}/{}/".format(jenkins_url, job.name, build_number)
+            return None
+        return status
 
-        check_statuses.append(
-            CheckStatus(
-                label=label,
-                status=status,
-                url=url,
-            )
-        )
+    statuses = map(get_status, jobs)
+    if all(statuses):
+        status = True
+    elif any(status is False for status in statuses):
+        status = False
+    else:
+        status = None
 
-    return check_statuses
+    return CheckStatus(
+        label='Jenkins',
+        status=status,
+        url=pull_request_status_url,
+    )

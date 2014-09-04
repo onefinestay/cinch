@@ -7,6 +7,7 @@ from cinch import app
 
 def is_authenticated():
     if app.debug:
+        session['gh-username'] = 'test_user'
         return True
     return session.get('access_token')
 

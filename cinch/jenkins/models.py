@@ -2,13 +2,15 @@ from cinch import db
 from cinch.models import STRING_LENGTH, Project
 
 
-job_projects = db.Table(
-    'job_projects',
-    db.Column('job_id', db.Integer, db.ForeignKey('jobs.id'),
-              primary_key=True),
-    db.Column('project_id', db.Integer, db.ForeignKey('projects.id'),
-              primary_key=True),
-)
+class JobProject(db.Model):
+    __tablename__ = 'job_projects'
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), primary_key=True)
+    project_id = db.Column(
+        db.Integer, db.ForeignKey('projects.id'), primary_key=True)
+    # may optionally be used to specify the name of the parameter this jenkins
+    # job uses to set the sha for this project. used when triggering jobs for
+    # pull requests for the non-pr projects
+    parameter_name = db.Column(db.String(STRING_LENGTH), nullable=True)
 
 
 class Job(db.Model):
@@ -17,7 +19,7 @@ class Job(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(STRING_LENGTH), unique=True, nullable=False)
     projects = db.relationship(
-        'Project', secondary=job_projects, backref='jobs')
+        'Project', secondary=JobProject.__table__, backref='jobs')
 
     def ordered_projects(self):
         return sorted(list(self.projects), key=lambda p: p.name)

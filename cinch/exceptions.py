@@ -1,0 +1,2 @@
+class UnknownProject(LookupError):
+    pass

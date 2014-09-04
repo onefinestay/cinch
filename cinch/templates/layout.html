@@ -18,7 +18,9 @@
             <div class="collapse navbar-collapse navbar-ex8-collapse">
                 <ul class="nav navbar-nav pull-right">
                     <li class="active"><a href="https://github.com/">
-                        <img id="gh-gravatar" width="20" height="20" src="{{ session['gh-gravatar'] }}&amp;s=140" />
+                        {% if session['gh-gravatar'] %}
+                            <img id="gh-gravatar" width="20" height="20" src="{{ session['gh-gravatar'] }}&amp;s=140" />
+                        {% endif %}
                         {{ session['gh-username'] }}
                     </a></li>
                     <li><a href="/logout/">Logout</a></li>
@@ -37,5 +39,7 @@
         <script>
             Clinch.GHUsername = '{{ session['gh-username'] }}';
         </script>
+
+    {% block js %}{% endblock %}
     </body>
 </html>

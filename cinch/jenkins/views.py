@@ -2,19 +2,26 @@ from __future__ import absolute_import
 import json
 import logging
 
-from flask import Blueprint, request, abort, render_template
-from sqlalchemy import desc
+from flask import Blueprint, request, abort, render_template, url_for
+import requests
+from sqlalchemy.orm.exc import NoResultFound
 
-from cinch import db
+from cinch import app, db
+from cinch.auth.decorators import requires_auth
+from cinch.exceptions import UnknownProject
 from cinch.models import PullRequest, Project
-from .controllers import record_job_result, record_job_sha, get_job_build_query
-from .exceptions import UnknownProject, UnknownJob
-from .models import Build
+from .controllers import record_job_result, record_job_sha, all_open_prs
+from .exceptions import UnknownJob
+from .models import Job, JobProject
 
 
 logger = logging.getLogger(__name__)
 
 jenkins = Blueprint('jenkins', __name__)
+
+
+JENKINS_BUILD_TEMPLATE = "{base_url}/job/{job_name}/{build_number}/"
+JENKINS_TRIGGER_TEMPLATE = "{base_url}/job/{job_name}/buildWithParameters"
 
 
 @jenkins.route('/api/build_status', methods=['POST'])
@@ -83,7 +90,16 @@ def build_sha():
     return 'OK', 200
 
 
+def get_jenkins_url():
+    jenkins_url = app.config.get('JENKINS_URL')
+    if jenkins_url is None:
+        logger.warn("Config key `JENKINS_URL` missing")
+        jenkins_url = 'http://jenkins.example.com'
+    return jenkins_url
+
+
 @jenkins.route('/pr/<project_owner>/<project_name>/<pr_number>')
+@requires_auth
 def pull_request_status(project_owner, project_name, pr_number):
     session = db.session
 
@@ -97,32 +113,91 @@ def pull_request_status(project_owner, project_name, pr_number):
 
     pull_request_project = pull_request.project
 
-    job_builds = {}
+    pr_map = all_open_prs()
     jobs = pull_request_project.jobs
-    for job in jobs:
-        if pull_request_project not in job.projects:
-            continue
 
-        query, sha_columns = get_job_build_query(
-            job.id,
-            [project.id for project in job.projects],
-        )
+    job_statuses = []
+    jenkins_url = get_jenkins_url()
 
-        # build number, success, shas
-        job_builds[job] = [
-            (result[0], result[1], result[2:])
-            for result in query.order_by(
-                desc(Build.build_number)
-            ).values(
-                Build.build_number,
-                Build.success,
-                *sha_columns
+    for job in sorted(jobs, key=lambda j: j.name):
+        build_number, status = pr_map[pull_request][job.id]
+
+        if build_number is None:
+            status = None
+            label = job.name
+            url = None
+        else:
+            label = "{}: {}".format(job.name, build_number)
+            url = JENKINS_BUILD_TEMPLATE.format(
+                base_url=jenkins_url,
+                job_name=job.name,
+                build_number=build_number,
             )
-        ]
+
+        job_statuses.append(
+            dict(
+                label=label,
+                status=status,
+                url=url,
+                job_name=job.name,
+            )
+        )
 
     return render_template(
         'jenkins/pull_request_status.html',
         pull_request=pull_request,
-        jobs=jobs,
-        job_builds=job_builds,
+        job_statuses=job_statuses,
+        rebuild_url=url_for('jenkins.trigger_build'),
     )
+
+
+@jenkins.route('/api/jobs/trigger', methods=['POST'])
+@requires_auth
+def trigger_build():
+    session = db.session
+
+    form = request.form
+    job_name = form['job_name']
+    project_owner = form['project_owner']
+    project_name = form['project_name']
+    pull_request_number = form['pull_request_number']
+
+    try:
+        job = session.query(Job).filter(Job.name == job_name).one()
+    except NoResultFound:
+        abort(404, 'Unknown job name {}'.format(job_name))
+
+    try:
+        pr = session.query(PullRequest).join(Project) .filter(
+            Project.owner == project_owner,
+            Project.name == project_name,
+            PullRequest.number == pull_request_number,
+        ).one()
+    except NoResultFound:
+        github_url = 'https://github.com'
+        abort(404, "Unknown pull request {}/{}/{}/{}".format(
+            github_url, project_owner, project_name, pull_request_number))
+
+    shas = {}
+    shas = {
+        project: project.master_sha
+        for project in job.projects
+    }
+    shas[pr.project] = pr.merge_head
+
+    job_params = session.query(JobProject).filter(
+        JobProject.job_id == job.id).all()
+    parameter_names = {
+        param.project_id: param.parameter_name
+        for param in job_params
+    }
+    jenkins_params = {
+        parameter_names.get(project.id, project.name): sha
+        for project, sha in shas.items()
+    }
+
+    jenkins_url = get_jenkins_url()
+    trigger_url = JENKINS_TRIGGER_TEMPLATE.format(
+        base_url=jenkins_url, job_name=job.name)
+    requests.post(trigger_url, data=jenkins_params)
+    return "ok"

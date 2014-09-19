@@ -12,7 +12,7 @@ from nameko.events import Event, event_handler
 from nameko.messaging import AMQP_URI_CONFIG_KEY
 from nameko.standalone.events import event_dispatcher
 
-from cinch import db
+from cinch import app, db
 from cinch.check import run_checks
 from cinch.git import Repo
 from cinch.models import Project, PullRequest
@@ -21,9 +21,18 @@ from cinch.models import Project, PullRequest
 _logger = logging.getLogger(__name__)
 
 
-from cinch import app
+class WorkerGitHub(GitHub):
+    """for use by worker methods. uses the github token from app.config
 
-github = GitHub(app)
+    .. warning::
+        do not use in any web-exposed views; they should use the
+        user's token, as provided by `cinch.auth.views.token_getter`
+    """
+    def get_access_token(self):
+        return self.app.config['GITHUB_TOKEN']
+
+
+github = WorkerGitHub(app)
 
 
 if 'SERVER_URL' in app.config:

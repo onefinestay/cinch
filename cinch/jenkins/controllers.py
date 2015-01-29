@@ -228,6 +228,10 @@ def get_job_sha_statuses(job_master_shas):
         results = query.values(Build.build_number, Build.success, *sha_columns)
         for result in results:
             shas = result[2:]
+            existing = job_statuses[job_id].get(shas)
+            if existing and existing.status and not result.success:
+                # don't overwrite successes with failures (for same job/sha)
+                continue
             job_statuses[job_id][shas] = BuildInfo(
                 result.build_number, result.success)
 

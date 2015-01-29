@@ -390,3 +390,21 @@ def test_dont_match_if_merge_head_is_none(session, fixtures, app_context):
     pr.merge_head = None
 
     assert jenkins_check(pr).status is None
+
+
+# regression test for #39
+def test_multiple_builds_for_same_job_and_sha(session, app_context):
+    project = Project(name='project', owner='owner')
+    job = Job(name='job', projects=[project])
+    session.add(job)
+    session.commit()
+
+    sha = "proposed-sha"
+
+    record_job_sha('job', 1, 'owner', 'project', sha)
+    record_job_sha('job', 2, 'owner', 'project', sha)
+
+    record_job_result('job', 1, True, "passed")
+    record_job_result('job', 2, False, "passed")
+
+    assert build_check(session, 'project', sha)

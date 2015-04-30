@@ -1,4 +1,4 @@
-from flask import session, url_for, redirect, render_template
+from flask import session, url_for, redirect, render_template, request
 from flask.ext.github import GitHub
 
 from cinch import app
@@ -17,14 +17,12 @@ def failed():
     return render_template('authentication_failed.html')
 
 
-@app.route('/unauthenticated')
-def unauthenticated():
-    return redirect(url_for('login'))
-
-
-@app.route('/login/')
+@app.route('/login')
 def login():
-    return github.authorize()
+    redirect_uri = url_for('authorized', next=request.args.get('next'), _external=True)
+    return github.authorize(
+        redirect_uri=redirect_uri
+    )
 
 
 @app.route('/logout/')
@@ -43,6 +41,7 @@ def user():
 @app.route('/callback/')
 @github.authorized_handler
 def authorized(access_token):
+    next_url = request.args.get('next') or url_for('index')
     if access_token is None:
         return redirect(url_for('failed'))
 
@@ -51,4 +50,4 @@ def authorized(access_token):
     session['gh-username'] = user_dict["login"]
     session['gh-gravatar'] = user_dict["avatar_url"]
 
-    return redirect(url_for('index'))
+    return redirect(next_url)

@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import session, redirect, url_for
+from flask import session, redirect, url_for, request
 
 from cinch import app
 
@@ -16,6 +16,6 @@ def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not is_authenticated():
-            return redirect(url_for('unauthenticated'))
+            return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated

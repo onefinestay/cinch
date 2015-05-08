@@ -2,7 +2,6 @@
 # see https://github-flask.readthedocs.org/en/latest/
 export CINCH_GITHUB_CLIENT_ID=
 export CINCH_GITHUB_CLIENT_SECRET=
-export CINCH_GITHUB_CALLBACK_URL=
 
 # The token for the application to authenticate with when making
 # requests to the github api

@@ -4,6 +4,7 @@ from flask import Flask
 from flask.ext.admin import Admin
 from flask.ext.sqlalchemy import SQLAlchemy
 from raven.contrib.flask import Sentry
+from werkzeug.contrib.fixers import ProxyFix
 
 
 DEFAULT_DB_URI = 'sqlite://'
@@ -21,6 +22,8 @@ for key, value in os.environ.items():
 
 app.secret_key = app.config['SECRET_KEY']
 
+if 'PROXY_FIX' in app.config:
+    app.wsgi_app = ProxyFix(app.wsgi_app)
 
 if 'SENTRY_DSN' in app.config:
     Sentry(app, dsn=app.config['SENTRY_DSN'])
